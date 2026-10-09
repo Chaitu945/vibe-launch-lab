@@ -156,12 +156,18 @@ export const TOPICS = {
   CurveCompleted: "0x654e1d49372e305713e05ff2ed090670dd8683b365ce33618c15e187b875d21d",
   Graduated: "0xc1eaf6441a62895ddec3612cee606bd971cf6b1b38dd700f103e7b6b94167d0c",
   /**
-   * V6 launch events. Unlike everything above these were NOT in the frontend
-   * bundle and are not in 4byte.directory — they were recovered by decoding live
-   * logs emitted by the V6 factory. Their layout is positional, see decodeV6Launch().
+   * V6 launch event. Unlike everything above this was NOT in the frontend bundle
+   * and is not in 4byte.directory — it was recovered by decoding live logs emitted
+   * by the V6 factory. Its layout is positional, see decodeV6Launch().
    */
-  V6LaunchedA: "0xa7e8032bfd07a9fbcde50eabe91eb2901faee6dbddd9cced579491d9b07ef5c8",
-  V6LaunchedB: "0x5e4996fc710ab2bf894de604570b39df292e3629ba35a424cd622f8da787e537",
+  V6Launched: "0xa7e8032bfd07a9fbcde50eabe91eb2901faee6dbddd9cced579491d9b07ef5c8",
+  /**
+   * The other event the V6 factory emits, ~1:1 with launches. It is NOT a launch
+   * event: 3 topics / 1 word, and the positional launch decoder fails on it by
+   * design. Named here so the classifier can ignore it knowingly rather than
+   * treating it as a decode failure.
+   */
+  V6PerLaunchOther: "0x5e4996fc710ab2bf894de604570b39df292e3629ba35a424cd622f8da787e537",
 } as const;
 
 /**

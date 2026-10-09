@@ -26,6 +26,16 @@ console.log("by generation:", byGen);
 
 check("scan returned launches", scan.launches.length > 0, `${scan.launches.length} found`);
 check("scan covers more than one generation", Object.keys(byGen).length > 1, Object.keys(byGen).join(", "));
+check(
+  "classification is exact: zero malformed launch logs",
+  scan.decodeFailures === 0,
+  `${scan.decodeFailures} malformed${scan.firstDecodeError ? ` (${scan.firstDecodeError})` : ""}`,
+);
+check(
+  "non-launch protocol events are counted as ignored, not errors",
+  scan.ignoredLogs > 0,
+  `${scan.ignoredLogs} ignored`,
+);
 
 const sample = scan.launches.slice(0, 12);
 // The feed is V6-dominated right now, so deliberately include classic rows too:

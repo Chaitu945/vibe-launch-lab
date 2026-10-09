@@ -26,6 +26,7 @@ export function Feed() {
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [decodeWarn, setDecodeWarn] = useState<string | null>(null);
+  const [ignored, setIgnored] = useState(0);
   const [head, setHead] = useState<number | null>(null);
   const [raw, setRaw] = useState<RawLaunch[]>([]);
   const [rows, setRows] = useState<LaunchRow[]>([]);
@@ -71,6 +72,7 @@ export function Feed() {
       setDecodeWarn(
         res.decodeFailures > 0 ? `${res.decodeFailures} log(s) failed to decode: ${res.firstDecodeError ?? "unknown error"}` : null,
       );
+      setIgnored(res.ignoredLogs);
       setStage(`found ${fmtInt(res.launches.length)} launches — reading state`);
       const page = res.launches.slice(0, PAGE);
       const enriched = await enrichLaunches(page, { onProgress: () => undefined, shouldStop: () => stopRef.current });
@@ -196,6 +198,12 @@ export function Feed() {
       )}
       {error && <p className="error">RPC error: {error}</p>}
       {decodeWarn && <p className="error">decode warning — {decodeWarn}</p>}
+      {!decodeWarn && ignored > 0 && (
+        <p className="muted small">
+          {fmtInt(ignored)} other protocol event(s) ignored — this RPC ignores event filters, so every log from a factory is
+          classified client-side and non-launch events are counted here rather than treated as errors.
+        </p>
+      )}
 
       {rows.length > 0 && (
         <>

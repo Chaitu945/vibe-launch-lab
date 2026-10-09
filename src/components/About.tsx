@@ -150,9 +150,10 @@ export function About() {
             incomplete.
           </li>
           <li>
-            <b>topic filters beyond topic0.</b> This RPC silently ignores <code>topics[1]</code> and beyond: filtering by token
-            address returns every log from that contract. All discrimination therefore happens client-side after the fetch,
-            which is why decode failures are surfaced instead of assumed away.
+            <b>Event filters do not work on this RPC.</b> The <code>topics</code> parameter is ignored
+            entirely — three different topic0 filters returned the identical log set — so every log from a factory is fetched
+            and classified client-side. Non-launch protocol events are counted and reported as ignored; only a log whose topic0
+            <i>is</i> a launch event but fails to decode is surfaced as an error.
           </li>
           <li>
             <b>Holder counts and individual trades.</b> Transfer/Bought/Sold logs are far denser than launches; scanning them

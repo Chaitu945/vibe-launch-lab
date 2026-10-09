@@ -1,4 +1,4 @@
-import { createPublicClient, http, decodeEventLog, getAddress, hexToString, type Hex, type Log } from "viem";
+import { createPublicClient, http, decodeEventLog, getAddress, hexToString, type Log } from "viem";
 import {
   CHAIN,
   FACTORIES,
@@ -19,13 +19,14 @@ export const client = createPublicClient({
 });
 
 /**
- * Raw log query. viem's typed overloads don't model a two-topic0 query with no
- * ABI, which is exactly what scanning two launch-event variants needs, so the
- * params are cast here rather than worked around with an inferred ABI.
+ * Raw log query by address and range.
+ *
+ * No `topics` parameter is sent on purpose: this RPC **ignores it** — three
+ * different topic0 filters returned the identical log set — so requesting a
+ * specific event buys nothing and hides that fact.
  */
 async function rawGetLogs(params: {
   address: `0x${string}`;
-  topics: Hex[];
   fromBlock: bigint;
   toBlock: bigint;
 }): Promise<Log[]> {
@@ -127,6 +128,25 @@ export interface ScanOptions {
   chunkBlocks?: number;
 }
 
+/**
+ * Classify one log from a factory.
+ *
+ * This RPC **ignores the `topics` parameter entirely** — three different topic0
+ * filters returned the identical log set — so every log of a factory arrives here
+ * and the discriminator has to be client-side: a log is a launch only if its topic0
+ * is one of the launch events AND it decodes. Anything else is a different protocol
+ * event and is counted separately, not reported as a failure.
+ */
+function classifyLog(log: Log, factory: FactoryInfo): { record: RawLaunch | null; kind: "launch" | "other" | "malformed" } {
+  const topic0 = log.topics[0];
+  if (!topic0) return { record: null, kind: "other" };
+  const isV6Launch = topic0 === TOPICS.V6Launched;
+  const isClassicLaunch = topic0 === TOPICS.TokenLaunched || topic0 === TOPICS.TokenLaunchedQuoted;
+  if (!isV6Launch && !isClassicLaunch) return { record: null, kind: "other" };
+  const record = isV6Launch ? decodeV6Launch(log, factory) : decodeClassicLaunch(log, factory);
+  return record ? { record, kind: "launch" } : { record: null, kind: "malformed" };
+}
+
 export async function getHead(): Promise<number> {
   const n = await client.getBlockNumber();
   return Number(n);
@@ -143,21 +163,21 @@ export async function getHead(): Promise<number> {
  */
 export async function scanLaunches(
   opts: ScanOptions,
-): Promise<{ launches: RawLaunch[]; head: number; chunks: number; halvings: number; decodeFailures: number; firstDecodeError: string | null }> {
+): Promise<{
+  launches: RawLaunch[];
+  head: number;
+  chunks: number;
+  halvings: number;
+  decodeFailures: number;
+  firstDecodeError: string | null;
+  ignoredLogs: number;
+}> {
   const head = await getHead();
   const totalBlocks = opts.windowBlocks;
   let chunk = opts.chunkBlocks ?? 100_000;
   let halvings = 0;
   const out: RawLaunch[] = [];
-  /**
-   * Topic0 sets differ per generation: V6 emits its own launch event, recovered
-   * from live logs (see TOPICS.V6LaunchedA). Note the RPC honours only topic0 —
-   * topic1+ filters are silently ignored — so all discrimination happens here.
-   */
-  const topicsFor = (f: FactoryInfo): [Hex, ...Hex[]] =>
-    f.generation === "v6"
-      ? [TOPICS.V6LaunchedA, TOPICS.V6LaunchedB]
-      : [TOPICS.TokenLaunched, TOPICS.TokenLaunchedQuoted];
+  let ignoredLogs = 0;
 
   const tasks: { factory: FactoryInfo; from: number; to: number }[] = [];
   for (const factory of FACTORIES) {
@@ -180,9 +200,10 @@ export async function scanLaunches(
     const t = tasks[i];
     let logs: Log[];
     try {
+      // No topics filter: this RPC ignores it, so requesting a specific event just
+      // returns the same set. Classification happens in classifyLog().
       logs = await rawGetLogs({
         address: getAddress(t.factory.address),
-        topics: topicsFor(t.factory),
         fromBlock: BigInt(t.from),
         toBlock: BigInt(t.to),
       });
@@ -207,15 +228,19 @@ export async function scanLaunches(
     // bug in this app's ABI, NOT an RPC limit, and must never be silently
     // swallowed by the halving path.
     for (const log of logs) {
-      try {
-        const record =
-          t.factory.generation === "v6" ? decodeV6Launch(log, t.factory) : decodeClassicLaunch(log, t.factory);
-        if (!record) throw new Error("log did not match the expected launch-event layout");
-        out.push(record);
-      } catch (err) {
-        decodeFailures++;
-        if (firstDecodeError === null) firstDecodeError = String(err).split("\n")[0].slice(0, 200);
+      const { record, kind } = classifyLog(log, t.factory);
+      if (kind === "other") {
+        ignoredLogs++;
+        continue;
       }
+      if (kind === "malformed" || !record) {
+        decodeFailures++;
+        if (firstDecodeError === null) {
+          firstDecodeError = `topic0 ${log.topics[0]} did not match the expected launch-event layout`;
+        }
+        continue;
+      }
+      out.push(record);
     }
     done += t.to - t.from;
     opts.onProgress?.({
@@ -228,7 +253,7 @@ export async function scanLaunches(
   }
 
   out.sort((a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex);
-  return { launches: out, head, chunks: tasks.length, halvings, decodeFailures, firstDecodeError };
+  return { launches: out, head, chunks: tasks.length, halvings, decodeFailures, firstDecodeError, ignoredLogs };
 }
 
 function baseRecord(log: Log, factory: FactoryInfo) {
@@ -242,7 +267,7 @@ function baseRecord(log: Log, factory: FactoryInfo) {
   };
 }
 
-function decodeClassicLaunch(log: Log, factory: FactoryInfo): RawLaunch | null {
+export function decodeClassicLaunch(log: Log, factory: FactoryInfo): RawLaunch | null {
   const decoded = decodeEventLog({ abi: FACTORY_ABI, data: log.data, topics: log.topics });
   const a = decoded.args as unknown as Record<string, unknown>;
   const quoted = decoded.eventName === "TokenLaunchedQuoted";
@@ -345,7 +370,9 @@ export function decodeV6Launch(log: Log, factory: FactoryInfo): RawLaunch | null
     quoteCurrency: pairWord && BigInt("0x" + pairWord) !== 0n ? wordToAddress(pairWord) : null,
     initialBuy: 0n, // not published in the V6 launch event
     metadataURI: uri,
-    quoted: log.topics[0] === TOPICS.V6LaunchedB,
+    // The V6 launch event has no stock-paired variant: the factory's other event is
+    // a different per-launch event entirely (V6PerLaunchOther), so this is always false.
+    quoted: false,
     curveKind: "v6",
     nameHint: name || undefined,
     symbolHint: symbol || undefined,
