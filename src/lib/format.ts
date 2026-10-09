@@ -7,17 +7,36 @@ export function fmtEth(wei: bigint | null | undefined, dp = 4): string {
   if (wei === null || wei === undefined) return "—";
   const v = Number(wei) / 1e18;
   if (v === 0) return "0";
-  if (Math.abs(v) < 0.0001) return v.toExponential(2);
+  if (Math.abs(v) < 0.0001) return toDecimals(v);
   return v.toLocaleString(undefined, { maximumFractionDigits: dp });
 }
 
-/** Price in quote per token, from an 18dp wad. Values are ~1e-9, so render in scientific-ish form. */
+/**
+ * Plain decimal expansion for very small numbers, with ~4 significant digits.
+ *
+ * Engineering notation (1.464e-9) is accurate but unreadable as a price; a token
+ * price is conventionally read as 0.000000001464. Paired with fmtPrice/fmtEth so
+ * nothing in the UI silently switches notation.
+ */
+export function toDecimals(v: number, sig = 4, maxDp = 18): string {
+  if (!Number.isFinite(v)) return "—";
+  if (v === 0) return "0";
+  const abs = Math.abs(v);
+  if (abs >= 1) return v.toFixed(Math.min(4, maxDp)).replace(/\.?0+$/, "");
+  const dp = Math.min(maxDp, Math.max(2, Math.ceil(-Math.log10(abs)) + (sig - 1)));
+  return v
+    .toFixed(dp)
+    .replace(/(\.\d*?)0+$/, "$1")
+    .replace(/\.$/, "");
+}
+
+/** Price in quote per token, from an 18dp wad. Shown in full decimals. */
 export function fmtPrice(wad: bigint | null | undefined): string {
   if (wad === null || wad === undefined) return "—";
   const v = Number(wad) / 1e18;
   if (v === 0) return "0";
-  if (v >= 0.001) return v.toFixed(6);
-  return v.toExponential(3).replace("e-", "e-");
+  if (v >= 0.001) return v.toFixed(6).replace(/\.?0+$/, "");
+  return toDecimals(v);
 }
 
 export function fmtTokens(tokens: bigint | null | undefined, dp = 2): string {

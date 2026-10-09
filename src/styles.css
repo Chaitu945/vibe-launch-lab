@@ -323,6 +323,7 @@ button.ghost:hover {
 .num {
   text-align: right;
   font-family: var(--mono);
+  white-space: nowrap;
 }
 
 .tr.th .num {

@@ -17,6 +17,7 @@ import { TokenDetail } from "../src/components/TokenDetail";
 import { TokenAvatar } from "../src/components/TokenAvatar";
 import { sanitizeMetadata, type ProjectMetadata } from "../src/lib/metadata";
 import { ETH_PAIR } from "../src/lib/chain";
+import { fmtEth, fmtPrice } from "../src/lib/format";
 import { buy, freshState, projectLaunch, soldAtGraduation, type LaunchConfig } from "../src/lib/curve";
 
 let failures = 0;
@@ -135,7 +136,15 @@ check(
   `${feeRatio.toFixed(5)}x (integer division loses a few wei)`,
 );
 
-// ---------- 3. hostile metadata must never crash a render ----------
+// ---------- 3. number formatting: decimals, never engineering notation ----------
+check("price 1.464e-9 renders as decimals", fmtPrice(1_464_000_000n) === "0.000000001464", fmtPrice(1_464_000_000n));
+check("price 1.6445e-9 rounds to 4 significant digits", fmtPrice(1_644_542_990n) === "0.000000001645", fmtPrice(1_644_542_990n));
+check("price 2.7 renders as a plain decimal", fmtPrice(2_700_000_000_000_000_000n) === "2.7", fmtPrice(2_700_000_000_000_000_000n));
+check("small ETH amounts render as decimals", fmtEth(46_800_000_000_000n) === "0.0000468", fmtEth(46_800_000_000_000n));
+check("ordinary ETH amounts keep their grouping", fmtEth(513_000_000_000_000_000n) === "0.513", fmtEth(513_000_000_000_000_000n));
+check("no output anywhere contains an exponent", ![fmtPrice(1_464_000_000n), fmtPrice(1_644_542_990n), fmtEth(46_800_000_000_000n), fmtEth(1n), fmtEth(10n ** 9n)].some((s) => s.includes("e-") || s.includes("e+")));
+
+// ---------- 4. hostile metadata must never crash a render ----------
 // Regression: an IPFS metadata document whose `image` is an array (not a string)
 // reached `.startsWith` and blanked the whole feed. Reproduce that shape here.
 const hostileRaw = {
