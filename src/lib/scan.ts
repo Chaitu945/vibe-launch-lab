@@ -228,7 +228,16 @@ export async function scanLaunches(
     // bug in this app's ABI, NOT an RPC limit, and must never be silently
     // swallowed by the halving path.
     for (const log of logs) {
-      const { record, kind } = classifyLog(log, t.factory);
+      let classified: ReturnType<typeof classifyLog>;
+      try {
+        classified = classifyLog(log, t.factory);
+      } catch (err) {
+        // A malformed log must never abort the scan.
+        decodeFailures++;
+        if (firstDecodeError === null) firstDecodeError = `classify threw: ${String(err).split("\n")[0].slice(0, 160)}`;
+        continue;
+      }
+      const { record, kind } = classified;
       if (kind === "other") {
         ignoredLogs++;
         continue;
@@ -414,16 +423,37 @@ export async function enrichLaunches(rows: RawLaunch[], opts: { onProgress?: (do
   for (let start = 0; start < rows.length; start += BATCH) {
     if (opts.shouldStop?.()) break;
     const slice = rows.slice(start, start + BATCH);
-    const contracts = slice.flatMap((r) => [
-      { address: getAddress(r.token), abi: ERC20_ABI, functionName: "name" as const },
-      { address: getAddress(r.token), abi: ERC20_ABI, functionName: "symbol" as const },
-      { address: getAddress(r.token), abi: ERC20_ABI, functionName: "transfersUnlocked" as const },
-      { address: getAddress(r.token), abi: ERC20_ABI, functionName: "totalSupply" as const },
-      ...CURVE_READ_FNS.map((fn) => ({ address: getAddress(r.curve), abi: CURVE_ABI, functionName: fn })),
-      ...V6_CURVE_READ_FNS.map((fn) => ({ address: getAddress(r.curve), abi: V6_CURVE_ABI, functionName: fn })),
-      { address: getAddress(r.curve), abi: V6_CURVE_ABI, functionName: "quoteBuyExactIn" as const, args: [PROBE_LO] },
-      { address: getAddress(r.curve), abi: V6_CURVE_ABI, functionName: "quoteBuyExactIn" as const, args: [PROBE_HI] },
-    ]);
+    /**
+     * Addresses come from decoded logs, so a malformed one is possible. `getAddress`
+     * THROWS on a bad checksum/length — outside the multicall's try/catch — which is
+     * exactly the kind of one-bad-row failure that blanks a UI. Substitute the zero
+     * address instead: the reads then fail individually (allowFailure) and the row
+     * renders with dashes plus an explicit reason.
+     */
+    const ZERO = "0x0000000000000000000000000000000000000000" as const;
+    const toAddr = (a: string): `0x${string}` => {
+      try {
+        return getAddress(a);
+      } catch {
+        return ZERO;
+      }
+    };
+    const badAddress = (r: RawLaunch) => toAddr(r.token) === ZERO || toAddr(r.curve) === ZERO;
+
+    const contracts = slice.flatMap((r) => {
+      const token = toAddr(r.token);
+      const curve = toAddr(r.curve);
+      return [
+        { address: token, abi: ERC20_ABI, functionName: "name" as const },
+        { address: token, abi: ERC20_ABI, functionName: "symbol" as const },
+        { address: token, abi: ERC20_ABI, functionName: "transfersUnlocked" as const },
+        { address: token, abi: ERC20_ABI, functionName: "totalSupply" as const },
+        ...CURVE_READ_FNS.map((fn) => ({ address: curve, abi: CURVE_ABI, functionName: fn })),
+        ...V6_CURVE_READ_FNS.map((fn) => ({ address: curve, abi: V6_CURVE_ABI, functionName: fn })),
+        { address: curve, abi: V6_CURVE_ABI, functionName: "quoteBuyExactIn" as const, args: [PROBE_LO] },
+        { address: curve, abi: V6_CURVE_ABI, functionName: "quoteBuyExactIn" as const, args: [PROBE_HI] },
+      ];
+    });
 
     let results: unknown[];
     try {
@@ -533,7 +563,11 @@ export async function enrichLaunches(rows: RawLaunch[], opts: { onProgress?: (do
         launchTimestamp: launchTs,
         progressBps: progress,
         priceSource: statePrice !== null ? "state" : quotePriceWad !== null ? "quote" : null,
-        enrichmentError: results.length === 0 ? "multicall unavailable" : null,
+        enrichmentError: badAddress(r)
+          ? "invalid address in launch log — reads skipped"
+          : results.length === 0
+            ? "multicall unavailable"
+            : null,
       });
     });
     opts.onProgress?.(Math.min(start + BATCH, rows.length), rows.length);

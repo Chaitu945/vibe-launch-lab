@@ -761,6 +761,49 @@ code {
   gap: 16px;
 }
 
+/* ---------- crash reporter ---------- */
+.crash {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+  border: 1px solid #5c2523;
+  background: #150e0d;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.crash h2 {
+  margin: 0;
+  color: #ff8a80;
+  font-size: 16px;
+}
+
+.crash-pre {
+  margin: 0;
+  padding: 11px 13px;
+  background: #0d0f10;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.crash-pre.dim {
+  color: var(--muted);
+}
+
+.crash-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .about ul {
   margin: 0;
   padding-left: 18px;

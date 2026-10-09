@@ -95,10 +95,15 @@ export function Feed() {
     const nextRaw = raw.slice(already, already + PAGE);
     if (nextRaw.length === 0) return;
     setStage(`reading ${nextRaw.length} more`);
-    const enriched = await enrichLaunches(nextRaw, {});
-    setRows((prev) => [...prev, ...enriched]);
-    setStage(null);
-    await loadMetadata(enriched);
+    try {
+      const enriched = await enrichLaunches(nextRaw, {});
+      setRows((prev) => [...prev, ...enriched]);
+      setStage(null);
+      await loadMetadata(enriched);
+    } catch (e) {
+      setStage(null);
+      setError(`loading more rows failed: ${String(e).slice(0, 200)}`);
+    }
   }, [raw, rows.length, loadMetadata]);
 
   const stats = useMemo(() => {
