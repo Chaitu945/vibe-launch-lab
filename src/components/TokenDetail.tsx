@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CHAIN } from "../lib/chain";
 import { fmtEth, fmtPrice, fmtTokens, pct, short, agoFromUnix } from "../lib/format";
-import { verifyCurve, type LaunchRow, type VerificationResult } from "../lib/scan";
+import { verifyCurve, rowLaunchTimestamp, rowProgressBps, rowRaised, rowTarget, rowTaxBps, rowTokensSold, type LaunchRow, type VerificationResult } from "../lib/scan";
 import type { ProjectMetadata } from "../lib/metadata";
 import { TokenAvatar } from "./TokenAvatar";
 
@@ -28,7 +28,11 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
     }
   };
 
-  const s = row.state;
+  const raised = rowRaised(row);
+  const target = rowTarget(row);
+  const taxBps = rowTaxBps(row);
+  const ts = rowLaunchTimestamp(row);
+  const isV6 = row.curveKind === "v6";
   return (
     <aside className="detail">
       <div className="detail-head">
@@ -71,18 +75,18 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
       <div className="kv">
         <div>
           <span>Raised on curve</span>
-          <b>{fmtEth(s?.realEth)} ETH</b>
+          <b>{fmtEth(raised)} ETH</b>
         </div>
         <div>
           <span>Graduation target</span>
-          <b>{s && s.target > 0n ? `${fmtEth(s.target)} ETH` : "unverified"}</b>
+          <b>{target !== null && target > 0n ? `${fmtEth(target)} ETH` : "unverified"}</b>
         </div>
         <div>
           <span>Progress</span>
-          <b>{pct(row.progressBps)}</b>
+          <b>{pct(rowProgressBps(row))}</b>
         </div>
         <div>
-          <span>Spot price</span>
+          <span>{row.priceSource === "quote" ? "Price (from quote)" : "Spot price"}</span>
           <b>{fmtPrice(row.spotPriceWad)} ETH</b>
         </div>
         <div>
@@ -91,15 +95,31 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
         </div>
         <div>
           <span>Tokens sold</span>
-          <b>{fmtTokens(s ? s.virtualToken : null)}</b>
+          <b>{fmtTokens(rowTokensSold(row))}</b>
+        </div>
+        <div>
+          <span>Curve</span>
+          <b>{isV6 ? "V6 (renamed surface)" : "classic"}</b>
+        </div>
+        <div>
+          <span>{isV6 ? "Project tax" : "Curve fee"}</span>
+          <b>{taxBps !== null ? `${Number(taxBps) / 100}%` : "—"}</b>
         </div>
         <div>
           <span>Creator opening buy</span>
-          <b>{fmtEth(row.initialBuy)} ETH</b>
+          <b>{isV6 ? "not published by V6 event" : `${fmtEth(row.initialBuy)} ETH`}</b>
         </div>
         <div>
           <span>Status</span>
           <b>{row.graduated ? "graduated / complete" : "on curve"}</b>
+        </div>
+        <div>
+          <span>Launched</span>
+          <b>{ts ? `${agoFromUnix(ts)} ago` : "—"}</b>
+        </div>
+        <div>
+          <span>Generation</span>
+          <b>{row.factoryLabel}</b>
         </div>
       </div>
 
@@ -135,30 +155,45 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
       <div className="verify-block">
         <div className="verify-head">
           <b>Model vs contract</b>
-          <button className="ghost small" onClick={runCheck} disabled={checking}>
-            {checking ? "checking…" : "run check"}
-          </button>
+          {!isV6 && (
+            <button className="ghost small" onClick={runCheck} disabled={checking}>
+              {checking ? "checking…" : "run check"}
+            </button>
+          )}
         </div>
-        <p className="muted small">
-          Reads this curve's own <code>spotPriceWad()</code> and <code>quoteBuy(0.01 ETH)</code> and compares them with the
-          simulator's math.
-        </p>
-        {checkError && <p className="error small">{checkError}</p>}
-        {check && (
-          <div className="verify-result">
-            <div className="row">
-              <span>price</span>
-              <b>{check.spotDeltaWei === 0n ? "exact match" : `off by ${check.spotDeltaWei.toString()} wei`}</b>
-            </div>
-            <div className="row">
-              <span>0.01 ETH buy → tokens</span>
-              <b>{check.tokenDelta.toString()} wei ({fmtTokens(check.chainTokens, 1)} from chain)</b>
-            </div>
-            <div className={`row verdict ${check.ok ? "ok" : "bad"}`}>
-              <span>verdict</span>
-              <b>{check.ok ? "model reproduces the contract" : "MISMATCH — do not trust simulator"}</b>
-            </div>
-          </div>
+        {isV6 ? (
+          <p className="muted small">
+            Not applicable on a <b>V6 curve</b>: it exposes no reserve or price getters (they revert), so this app does not
+            model its pricing. The price above is derived from the contract's own <code>quoteBuyExactIn()</code> — the
+            marginal price of the next 0.001 ETH — not from a formula. Raised, target, tax and sold counts are read directly
+            from the curve.
+          </p>
+        ) : (
+          <>
+            <p className="muted small">
+              Reads this curve's own <code>spotPriceWad()</code> and <code>quoteBuy(0.01 ETH)</code> and compares them with the
+              simulator's math.
+            </p>
+            {checkError && <p className="error small">{checkError}</p>}
+            {check && (
+              <div className="verify-result">
+                <div className="row">
+                  <span>price</span>
+                  <b>{check.spotDeltaWei === 0n ? "exact match" : `off by ${check.spotDeltaWei.toString()} wei`}</b>
+                </div>
+                <div className="row">
+                  <span>0.01 ETH buy → tokens</span>
+                  <b>
+                    {check.tokenDelta.toString()} wei ({fmtTokens(check.chainTokens, 1)} from chain)
+                  </b>
+                </div>
+                <div className={`row verdict ${check.ok ? "ok" : "bad"}`}>
+                  <span>verdict</span>
+                  <b>{check.ok ? "model reproduces the contract" : "MISMATCH — do not trust simulator"}</b>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </aside>

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { BLOCK_SECONDS, CHAIN } from "../lib/chain";
-import { activityBuckets, enrichLaunches, scanLaunches, type LaunchRow, type RawLaunch, type ScanProgress } from "../lib/scan";
+import { activityBuckets, enrichLaunches, rowLaunchTimestamp, rowProgressBps, rowRaised, scanLaunches, type LaunchRow, type RawLaunch, type ScanProgress } from "../lib/scan";
 import { fetchMetadata, mapLimit, type ProjectMetadata } from "../lib/metadata";
 import { agoFromUnix, duration, fmtEth, fmtInt, fmtPrice, pct, short } from "../lib/format";
 import { TokenAvatar } from "./TokenAvatar";
@@ -102,11 +102,11 @@ export function Feed() {
   const stats = useMemo(() => {
     const active = rows.filter((r) => !r.graduated).length;
     const graduated = rows.filter((r) => r.graduated).length;
-    const raised = rows.reduce((a, r) => a + (r.state?.realEth ?? 0n), 0n);
+    const raised = rows.reduce((a, r) => a + (rowRaised(r) ?? 0n), 0n);
     const initial = rows.reduce((a, r) => a + r.initialBuy, 0n);
-    const withTarget = rows.filter((r) => r.progressBps !== null);
+    const withTarget = rows.filter((r) => rowProgressBps(r) !== null);
     const avgProgress = withTarget.length
-      ? withTarget.reduce((a, r) => a + (r.progressBps ?? 0), 0) / withTarget.length
+      ? withTarget.reduce((a, r) => a + (rowProgressBps(r) ?? 0), 0) / withTarget.length
       : null;
     return { active, graduated, raised, initial, avgProgress, total: rows.length };
   }, [rows]);
@@ -135,10 +135,10 @@ export function Feed() {
     const sorted = [...list];
     switch (sort) {
       case "progress":
-        sorted.sort((a, b) => (b.progressBps ?? -1) - (a.progressBps ?? -1));
+        sorted.sort((a, b) => (rowProgressBps(b) ?? -1) - (rowProgressBps(a) ?? -1));
         break;
       case "raised":
-        sorted.sort((a, b) => Number((b.state?.realEth ?? 0n) - (a.state?.realEth ?? 0n)));
+        sorted.sort((a, b) => Number((rowRaised(b) ?? 0n) - (rowRaised(a) ?? 0n)));
         break;
       case "fdv":
         sorted.sort((a, b) => Number((b.fdvWei ?? 0n) - (a.fdvWei ?? 0n)));
@@ -287,15 +287,15 @@ export function Feed() {
                 <span>
                   <span className={`badge ${r.generation}`}>{r.factoryLabel}</span>
                 </span>
-                <span className="muted small">{r.launchTimestamp ? agoFromUnix(r.launchTimestamp) : "—"}</span>
+                <span className="muted small">{rowLaunchTimestamp(r) ? agoFromUnix(rowLaunchTimestamp(r)!) : "—"}</span>
                 <span className="num">{fmtEth(r.initialBuy, 3)}</span>
-                <span className="num">{fmtEth(r.state?.realEth, 3)}</span>
+                <span className="num">{fmtEth(rowRaised(r), 3)}</span>
                 <span className="num">
                   <span className="progress-cell">
                     <span className="mini-bar">
-                      <span className="mini-fill" style={{ width: `${Math.min(100, (r.progressBps ?? 0) / 100)}%` }} />
+                      <span className="mini-fill" style={{ width: `${Math.min(100, (rowProgressBps(r) ?? 0) / 100)}%` }} />
                     </span>
-                    {pct(r.progressBps, 0)}
+                    {pct(rowProgressBps(r), 0)}
                   </span>
                 </span>
                 <span className="num">{fmtPrice(r.spotPriceWad)}</span>

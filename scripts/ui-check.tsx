@@ -88,15 +88,31 @@ const drawer = await waitFor(() => dom.window.document.querySelector(".detail") 
 check("detail drawer opens on row click", drawer);
 check("drawer shows the model-vs-contract check", text().includes("Model vs contract") && text().includes("quoteBuy"));
 
-// ---- run the live model verification from the drawer ----
+// ---- run the live model verification from the drawer (classic rows) ----
+// V6 rows intentionally have no run-check button: their curve exposes no members
+// to check against. Either path is a pass; a contradiction is a failure.
 const checkBtn = Array.from(dom.window.document.querySelectorAll(".detail button")).find((b) =>
   (b.textContent ?? "").toLowerCase().includes("run check"),
 );
-check("drawer exposes a run-check button", Boolean(checkBtn));
-checkBtn?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
-const verified = await waitFor(() => text().includes("model reproduces the contract") || text().includes("MISMATCH"), 60_000, "verification result");
-const verdict = text().includes("model reproduces the contract") ? "contract reproduced" : text().includes("MISMATCH") ? "MISMATCH" : "no verdict";
-check("live verification against the deployed curve passes", verified && verdict === "contract reproduced", verdict);
+const v6Explained = text().includes("Not applicable on a") && text().includes("quoteBuyExactIn");
+check("drawer offers the run-check button or explains why V6 cannot be modelled", Boolean(checkBtn) || v6Explained);
+
+if (checkBtn) {
+  checkBtn.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+  const verified = await waitFor(
+    () => text().includes("model reproduces the contract") || text().includes("MISMATCH"),
+    60_000,
+    "verification result",
+  );
+  const verdict = text().includes("model reproduces the contract")
+    ? "contract reproduced"
+    : text().includes("MISMATCH")
+      ? "MISMATCH"
+      : "no verdict";
+  check("live verification against the deployed curve passes", verified && verdict === "contract reproduced", verdict);
+} else {
+  check("V6 row explains the absent check and the quote-derived price", v6Explained);
+}
 
 // ---- simulator tab ----
 const simTab = Array.from(dom.window.document.querySelectorAll("button")).find((b) => b.textContent === "Launch simulator");

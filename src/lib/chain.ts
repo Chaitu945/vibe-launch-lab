@@ -35,7 +35,7 @@ export const CHAIN = {
 /** ~0.15s per block measured on chain — used for time estimates in the UI. */
 export const BLOCK_SECONDS = 0.15;
 
-export type Generation = "retired" | "legacy" | "current";
+export type Generation = "retired" | "legacy" | "current" | "v6";
 
 export interface FactoryInfo {
   generation: Generation;
@@ -86,7 +86,21 @@ export const FACTORIES: FactoryInfo[] = [
     netGraduationTarget: 5_000_000_000_000_000_000n, // 5 ETH
     initialVirtualEthReserve: 1_764_594_628_672_298_575n,
     supportsQuotes: true,
-    note: "The generation the operator's interface launches into today.",
+    note: "The generation the operator's interface launched into before V6.",
+  },
+  {
+    generation: "v6",
+    label: "v6",
+    // Discovered on-chain: every launch created today comes from here, and this
+    // address is NOT in the operator's published config list.
+    address: "0xe794217880011f9cA6961340eD5c16EC9559Fea0",
+    deploymentBlock: 131_499_965,
+    feeBps: null, // per-launch: readable as baseTaxBps() on the curve
+    creatorShareBps: null,
+    netGraduationTarget: 4_000_000_000_000_000_000n, // 4 ETH, observed on 2026-10-09
+    initialVirtualEthReserve: null,
+    supportsQuotes: false,
+    note: "Newest generation. Emits a different, undocumented launch event and a renamed curve surface.",
   },
 ];
 
@@ -141,7 +155,37 @@ export const TOPICS = {
   Sold: "0x917d0fe1b6c3328f12a0177d25bf1b7d9e963116addad0bfc06b0cdcb6427603",
   CurveCompleted: "0x654e1d49372e305713e05ff2ed090670dd8683b365ce33618c15e187b875d21d",
   Graduated: "0xc1eaf6441a62895ddec3612cee606bd971cf6b1b38dd700f103e7b6b94167d0c",
+  /**
+   * V6 launch events. Unlike everything above these were NOT in the frontend
+   * bundle and are not in 4byte.directory — they were recovered by decoding live
+   * logs emitted by the V6 factory. Their layout is positional, see decodeV6Launch().
+   */
+  V6LaunchedA: "0xa7e8032bfd07a9fbcde50eabe91eb2901faee6dbddd9cced579491d9b07ef5c8",
+  V6LaunchedB: "0x5e4996fc710ab2bf894de604570b39df292e3629ba35a424cd622f8da787e537",
 } as const;
+
+/**
+ * V6 launch log layout, recovered from a live log:
+ *
+ *   topic1 = launchId (uint)      topic2 = projectTreasury (address)   topic3 = token (address)
+ *   word[0] = curve (address)     word[1] = offset to name            word[2] = offset to symbol
+ *   word[3] = offset to metadataURI   word[4] = pairCurrency (0 = native)
+ *   word[5] = baseTaxBps          word[8] = targetPairUnits           word[13] = metadata schema
+ *
+ * The three dynamic strings are what makes this event impossible to signature-match:
+ * it carries the token's name and symbol on-chain, not just a metadata pointer.
+ */
+export const V6_WORD = {
+  curve: 0,
+  nameOffset: 1,
+  symbolOffset: 2,
+  uriOffset: 3,
+  pairCurrency: 4,
+  baseTaxBps: 5,
+  targetPairUnits: 8,
+  schemaVersion: 13,
+} as const;
+
 
 export const FACTORY_ABI = parseAbi([
   "event TokenLaunched(uint256 indexed launchId, address indexed token, address indexed curve, address creator, address creatorFeeRecipient, address creatorVault, uint256 initialBuy, uint256 initialTokensBought, uint16 metadataSchemaVersion, bytes32 metadataDigest, string metadataURI)",
@@ -174,9 +218,44 @@ export const ERC20_ABI = parseAbi([
   "function decimals() view returns (uint8)",
   "function balanceOf(address) view returns (uint256)",
   "function transfersUnlocked() view returns (bool)",
+  "function totalSupply() view returns (uint256)",
 ]);
 
-/** Multicall-shaped read list used to enrich a launch row in one round trip. */
+/**
+ * V6 curve surface. Renamed relative to the older generations — the reserve and
+ * price getters (`virtualEthReserve`, `virtualTokenReserve`, `spotPriceWad`,
+ * `fdvWei`) simply do not exist on a V6 curve and revert, while `pairPrincipal`
+ * (raised), `targetPairUnits`, `sold`, `baseTaxBps`, `createdAt` and the decaying
+ * `currentRateBps` do. Quotes go through `quoteBuyExactIn` / `quoteSell` instead
+ * of `quoteBuy`.
+ */
+export const V6_CURVE_ABI = parseAbi([
+  "function pairPrincipal() view returns (uint256)",
+  "function targetPairUnits() view returns (uint256)",
+  "function sold() view returns (uint256)",
+  "function baseTaxBps() view returns (uint256)",
+  "function currentRateBps() view returns (uint256)",
+  "function createdAt() view returns (uint256)",
+  "function pairCurrency() view returns (address)",
+  "function projectTreasury() view returns (address)",
+  "function treasury() view returns (address)",
+  "function locker() view returns (address)",
+  "function poolId() view returns (bytes32)",
+  "function complete() view returns (bool)",
+  "function token() view returns (address)",
+  "function factory() view returns (address)",
+  "function quoteBuyExactIn(uint256 amountIn) view returns (uint256 tokensOut)",
+  "function quoteSell(uint256 amountIn) view returns (uint256)",
+]);
+
+export const V6_CURVE_READ_FNS = [
+  "pairPrincipal",
+  "targetPairUnits",
+  "sold",
+  "baseTaxBps",
+  "createdAt",
+  "complete",
+] as const;
 export const CURVE_READ_FNS = [
   "virtualEthReserve",
   "virtualTokenReserve",

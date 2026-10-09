@@ -110,12 +110,49 @@ export function About() {
       </section>
 
       <section className="panel">
+        <h2>The V6 generation (and why it is hard to see)</h2>
+        <p>
+          Every launch created today comes from a factory that is <b>not</b> in the operator's published config list, which is
+          why this tool watches it explicitly. It differs from the older generations in three ways that matter:
+        </p>
+        <ul>
+          <li>
+            <b>Its launch event is undocumented.</b> It is absent from the frontend bundle and unknown to 4byte.directory,
+            because it carries the token's name, symbol and metadata URI as three dynamic strings. This app decodes it by
+            position, and validates every field (offsets inside the data, printable strings, address-shaped curve) — a log that
+            fails those checks is reported as a decode failure rather than shown.
+          </li>
+          <li>
+            <b>Its curve surface is renamed.</b> <code>virtualEthReserve()</code>, <code>spotPriceWad()</code> and
+            <code>fdvWei()</code> do not exist on a V6 curve and revert. Raised is <code>pairPrincipal()</code>, target is{" "}
+            <code>targetPairUnits()</code> (observed at <b>4 ETH</b>, not the older 5 ETH), sold is <code>sold()</code>, the tax
+            you chose is <code>baseTaxBps()</code>, and the decaying post-launch rate is <code>currentRateBps()</code>.
+          </li>
+          <li>
+            <b>Its curve shape is not recovered</b>, so the simulator does not model it. V6 prices shown here are derived from
+            the contract's own <code>quoteBuyExactIn()</code> — the marginal price of the next 0.001 ETH — and are labelled{" "}
+            <i>from quote</i> rather than presented as a formula this app claims to understand.
+          </li>
+        </ul>
+        <p className="muted small">
+          V6 launch events also publish no creator address (the project treasury is shown instead) and no opening-buy amount.
+          Both are marked as such rather than guessed.
+        </p>
+      </section>
+
+      <section className="panel">
         <h2>What this tool cannot see</h2>
         <ul>
           <li>
             <b>Unknown factory generations.</b> The RPC refuses address-less log queries, so factories must be named explicitly.
-            A future generation deployed after this build will be missing until it is added. A feed that looks complete can still
-            be incomplete — the same limitation the community indexer documents.
+            A generation deployed after this build is invisible until added here — this is exactly what happened with V6, which
+            was found by decoding a live launch rather than from any published list. A feed that looks complete can still be
+            incomplete.
+          </li>
+          <li>
+            <b>topic filters beyond topic0.</b> This RPC silently ignores <code>topics[1]</code> and beyond: filtering by token
+            address returns every log from that contract. All discrimination therefore happens client-side after the fetch,
+            which is why decode failures are surfaced instead of assumed away.
           </li>
           <li>
             <b>Holder counts and individual trades.</b> Transfer/Bought/Sold logs are far denser than launches; scanning them
@@ -126,12 +163,16 @@ export function About() {
             right now", not as of the launch block.
           </li>
           <li>
-            <b>Metadata reliability.</b> Public IPFS gateways rate-limit aggressively; images may fail to load. Names and symbols
-            always come from chain and are unaffected.
+            <b>V6 curve shape.</b> Raised, target, sold and tax are read directly, but the price is quote-derived and the curve
+            is not simulated. Treat V6 projection numbers here as observations, not predictions.
           </li>
           <li>
-            <b>Intent.</b> The Monte Carlo panel models buyer behaviour from parameters <i>you</i> choose. It is not a forecast,
-            and it cannot know who will actually show up.
+            <b>Metadata reliability.</b> Public IPFS gateways rate-limit aggressively; images may fail to load. Names and
+            symbols always come from chain (or from the V6 launch event itself) and are unaffected.
+          </li>
+          <li>
+            <b>Intent.</b> The Monte Carlo panel models buyer behaviour from parameters <i>you</i> choose. It is not a
+            forecast, and it cannot know who will actually show up.
           </li>
         </ul>
       </section>

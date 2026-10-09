@@ -9,10 +9,11 @@ It is a client-side app: no backend, no API key, no indexer of its own. It reads
 ## What it does
 
 **Live launches**
-- Scans `TokenLaunched` and `TokenLaunchedQuoted` logs across **all three known factory generations** (retired / legacy / current), so tokens from older generations still show up.
+- Scans the launch events of **four factory generations** — retired, legacy, current, and the new **V6** factory, which is *not* in the operator's published config list and emits its own undocumented launch event.
 - Window selector from ~1 hour to ~3 days, with adaptive chunking: the public RPC enforces an undocumented 10,000-log cap and a query time limit, so the scanner halves its window on any RPC error and reports how often it had to.
-- Enriches each row with on-chain identity (`name()`, `symbol()`) and curve state (raised, target, progress, spot price, FDV, completion) through Multicall3.
-- Honest failure modes: a log that fails to *decode* is reported as a decode failure, never silently swallowed as an RPC limit.
+- Enriches each row with on-chain identity and curve state through Multicall3, for **both curve implementations** — the classic one and V6, whose surface is renamed (`pairPrincipal`, `targetPairUnits`, `sold`, `baseTaxBps`, `createdAt`).
+- Honest failure modes: a log that fails to *decode* is reported as a decode failure, never silently swallowed as an RPC limit or shown as data.
+- Also handles a quirk of this RPC: **`topics[1]`+ filters are ignored**, so all discrimination (which generation, which event layout) happens client-side after the fetch.
 
 **Launch simulator**
 - Presets built from constants read off deployed curves (gen3 ETH pair, gen1, and the SPCX stock pair).
@@ -48,6 +49,12 @@ Verified testnet constants (read on-chain, 2026-10-09, head ~131.7M):
 
 Consequences of those numbers: ~793.1M of the 800M curve allocation is sold by graduation (99.1%), and the price runs ~14.7× from launch to graduation.
 
+**This model covers the classic generations only.** The newer V6 curves are a different shape: their
+getters are renamed, their graduation target is **4 ETH**, and their reserve/price members do not
+exist at all. The feed reads V6 launches directly (raised, target, sold, tax, created-at) and derives
+their price from the contract's own `quoteBuyExactIn()`, labelled *from quote* in the UI. The
+simulator does not model V6, and says so.
+
 ## Run it
 
 ```bash
@@ -63,9 +70,21 @@ Every claim above is checked by a script that runs the app's own modules against
 
 ```bash
 npm run model:check        # curve model vs deployed contracts (quoteBuy / spotPriceWad)
-npx tsx scripts/harness.ts # scan + enrichment + the model check, against Robinhood Chain Testnet
+npx tsx scripts/harness.ts # scan + enrichment + model check, against Robinhood Chain Testnet
 npx tsx scripts/ssr-check.tsx   # renders every tab; asserts the simulator's headline numbers
 npx tsx scripts/ui-check.tsx    # mounts the app in a DOM, clicks scan, opens a drawer, runs a live verification
+npx tsx scripts/verify-token.ts 0x<token>   # verify one launch, classic or V6
+```
+
+Reverse-engineering tools, kept because a new generation will eventually appear and none of this is
+documented:
+
+```bash
+node tools/extract-events.py     # harvest event definitions out of the frontend chunks
+node scripts/curve-diff.mjs      # diff the PUSH4 selector sets of two deployed curves
+npx tsx scripts/curve-probe.ts   # probe curves with a getter list, reporting the exact revert
+node scripts/v6-harvest.mjs      # match frontend identifiers to bytecode selectors
+node scripts/v6-probe2.mjs       # probe a curve for candidate member names by raw eth_call
 ```
 
 The model check is the important one: if `quoteBuy` ever disagrees with this app's arithmetic, the simulator is wrong and the scripts fail.

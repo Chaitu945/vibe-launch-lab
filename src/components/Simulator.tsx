@@ -140,6 +140,11 @@ export function Simulator() {
           ))}
         </div>
         <p className="muted small">{PRESETS[preset].note}</p>
+        <p className="muted small">
+          This models the <b>classic generations</b> (gen1–gen3): their curve is constant-product over virtual reserves and the
+          math here is verified against their contracts. The newer V6 curves use a different, unrecovered shape — the feed shows
+          their live numbers, but this panel does not simulate them.
+        </p>
 
         <div className="grid-inputs">
           <label>

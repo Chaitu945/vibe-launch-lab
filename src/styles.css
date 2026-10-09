@@ -386,6 +386,11 @@ button.ghost:hover {
   border-color: #4d4213;
 }
 
+.badge.v6 {
+  color: #c39bff;
+  border-color: #523f7d;
+}
+
 .progress-cell {
   display: flex;
   gap: 7px;
