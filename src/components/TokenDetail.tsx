@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CHAIN } from "../lib/chain";
 import { fmtEth, fmtPrice, fmtTokens, pct, short, agoFromUnix } from "../lib/format";
 import { verifyCurve, rowLaunchTimestamp, rowProgressBps, rowRaised, rowTarget, rowTaxBps, rowTokensSold, type LaunchRow, type VerificationResult } from "../lib/scan";
-import type { ProjectMetadata } from "../lib/metadata";
+import { sanitizeMetadata, type ProjectMetadata } from "../lib/metadata";
 import { TokenAvatar } from "./TokenAvatar";
 
 interface Props {
@@ -33,10 +33,17 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
   const taxBps = rowTaxBps(row);
   const ts = rowLaunchTimestamp(row);
   const isV6 = row.curveKind === "v6";
+  /**
+   * Sanitize here too, not only at the fetch boundary: this component must be safe
+   * with whatever metadata object it is handed. A host object rendered as a React
+   * child throws "Objects are not valid as a React child" — caught by the render
+   * check, which is why this exists.
+   */
+  const meta = useMemo(() => (metadata ? sanitizeMetadata((metadata as { raw?: unknown }).raw ?? metadata) : null), [metadata]);
   return (
     <aside className="detail">
       <div className="detail-head">
-        <TokenAvatar name={row.name} imageUri={metadata?.image} size={44} />
+        <TokenAvatar name={row.name} imageUri={meta?.image} size={44} />
         <div>
           <div className="detail-title">
             {row.name} <span className="sym">{row.symbol}</span>
@@ -51,21 +58,21 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
         </button>
       </div>
 
-      {metadata?.description && <p className="detail-desc">{metadata.description}</p>}
-      {(metadata?.twitter || metadata?.website || metadata?.telegram) && (
+      {meta?.description && <p className="detail-desc">{meta.description}</p>}
+      {(meta?.twitter || meta?.website || meta?.telegram) && (
         <div className="link-row">
-          {metadata?.website && (
-            <a href={metadata.website} target="_blank" rel="noreferrer noopener">
+          {meta?.website && (
+            <a href={meta.website} target="_blank" rel="noreferrer noopener">
               website
             </a>
           )}
-          {metadata?.twitter && (
-            <a href={metadata.twitter} target="_blank" rel="noreferrer noopener">
+          {meta?.twitter && (
+            <a href={meta.twitter} target="_blank" rel="noreferrer noopener">
               x
             </a>
           )}
-          {metadata?.telegram && (
-            <a href={metadata.telegram} target="_blank" rel="noreferrer noopener">
+          {meta?.telegram && (
+            <a href={meta.telegram} target="_blank" rel="noreferrer noopener">
               telegram
             </a>
           )}

@@ -14,6 +14,8 @@ import App from "../src/App";
 import { Simulator } from "../src/components/Simulator";
 import { About } from "../src/components/About";
 import { TokenDetail } from "../src/components/TokenDetail";
+import { TokenAvatar } from "../src/components/TokenAvatar";
+import { sanitizeMetadata, type ProjectMetadata } from "../src/lib/metadata";
 import { ETH_PAIR } from "../src/lib/chain";
 import { buy, freshState, projectLaunch, soldAtGraduation, type LaunchConfig } from "../src/lib/curve";
 
@@ -47,39 +49,41 @@ const cfg: LaunchConfig = {
   initialBuy: 51_397_000_000_000_000n,
 };
 const state = freshState(cfg);
+const detailRow = {
+  generation: "current" as const,
+  factoryLabel: "gen3",
+  factory: "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
+  blockNumber: 131_000_000,
+  txHash: "0x",
+  logIndex: 0,
+  launchId: 1n,
+  token: "0x1111111111111111111111111111111111111111",
+  curve: "0x2222222222222222222222222222222222222222",
+  creator: "0x3333333333333333333333333333333333333333",
+  quoteCurrency: null,
+  initialBuy: 51_397_000_000_000_000n,
+  metadataURI: "",
+  quoted: false,
+  name: "Render Check",
+  symbol: "RCHK",
+  transfersUnlocked: false,
+  state,
+  v6: null,
+  totalSupply: ETH_PAIR.totalSupply,
+  curveTokensRemaining: 0n,
+  spotPriceWad: null,
+  fdvWei: null,
+  graduated: false,
+  launchTimestamp: Math.floor(Date.now() / 1000) - 120,
+  progressBps: 100,
+  priceSource: "state" as const,
+  curveKind: "classic" as const,
+  enrichmentError: null,
+};
+
 const detailHtml = renderToStaticMarkup(
   createElement(TokenDetail, {
-    row: {
-      generation: "current",
-      factoryLabel: "gen3",
-      factory: "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
-      blockNumber: 131_000_000,
-      txHash: "0x",
-      logIndex: 0,
-      launchId: 1n,
-      token: "0x1111111111111111111111111111111111111111",
-      curve: "0x2222222222222222222222222222222222222222",
-      creator: "0x3333333333333333333333333333333333333333",
-      quoteCurrency: null,
-      initialBuy: 51_397_000_000_000_000n,
-      metadataURI: "",
-      quoted: false,
-      name: "Render Check",
-      symbol: "RCHK",
-      transfersUnlocked: false,
-      state,
-      v6: null,
-      totalSupply: ETH_PAIR.totalSupply,
-      curveTokensRemaining: 0n,
-      spotPriceWad: null,
-      fdvWei: null,
-      graduated: false,
-      launchTimestamp: Math.floor(Date.now() / 1000) - 120,
-      progressBps: 100,
-      priceSource: "state",
-      curveKind: "classic",
-      enrichmentError: null,
-    },
+    row: detailRow,
     metadata: null,
     onClose: () => undefined,
   }),
@@ -130,6 +134,48 @@ check(
   Math.abs(feeRatio - 3) < 0.0001,
   `${feeRatio.toFixed(5)}x (integer division loses a few wei)`,
 );
+
+// ---------- 3. hostile metadata must never crash a render ----------
+// Regression: an IPFS metadata document whose `image` is an array (not a string)
+// reached `.startsWith` and blanked the whole feed. Reproduce that shape here.
+const hostileRaw = {
+  name: ["Nested Name"],
+  description: { text: "an object, not a string" },
+  image: ["ipfs://bafkreihostile1", "ipfs://bafkreihostile2"],
+  website: { url: "https://example.com" },
+  twitter: 12345,
+  properties: { image: "ipfs://bafkreifromproperties" },
+};
+
+check("sanitizeMetadata coerces an array image to its first string", sanitizeMetadata(hostileRaw)?.image === "ipfs://bafkreihostile1");
+check("sanitizeMetadata drops an object description", sanitizeMetadata(hostileRaw)?.description === undefined);
+check("sanitizeMetadata falls back to properties.image", sanitizeMetadata({ properties: { image: "ipfs://x" } })?.image === "ipfs://x");
+check("sanitizeMetadata turns a numeric twitter into a string", sanitizeMetadata(hostileRaw)?.twitter === "12345");
+check("sanitizeMetadata survives a non-object document", sanitizeMetadata("not json") === null && sanitizeMetadata(null) === null);
+
+let avatarThrew = "";
+for (const bad of [["ipfs://a", "ipfs://b"], { uri: "ipfs://c" }, 42, null, undefined]) {
+  try {
+    renderToStaticMarkup(createElement(TokenAvatar, { name: "Hostile", imageUri: bad as unknown as string }));
+  } catch (e) {
+    avatarThrew = String(e).slice(0, 120);
+  }
+}
+check("TokenAvatar survives non-string image values", avatarThrew === "", avatarThrew);
+
+let detailThrew = "";
+try {
+  renderToStaticMarkup(
+    createElement(TokenDetail, {
+      row: { ...detailRow, metadataURI: "ipfs://hostile" },
+      metadata: hostileRaw as unknown as ProjectMetadata,
+      onClose: () => undefined,
+    }),
+  );
+} catch (e) {
+  detailThrew = String(e).slice(0, 120);
+}
+check("TokenDetail survives hostile metadata fields", detailThrew === "", detailThrew);
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

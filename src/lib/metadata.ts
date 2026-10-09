@@ -59,15 +59,55 @@ function cacheSet(key: string, value: ProjectMetadata | null) {
   }
 }
 
-export function cidOf(uri: string): string | null {
-  if (!uri) return null;
+/**
+ * Metadata is untrusted input: it is a JSON blob someone else wrote and uploaded
+ * to IPFS. `image` in particular is published as a string by most projects, but
+ * arrays and nested objects are common — and a non-string reaching a `.startsWith`
+ * call took this app's whole UI down once. So every field is coerced here, at the
+ * boundary, and the components never have to defend themselves.
+ */
+function asString(v: unknown): string | undefined {
+  if (typeof v === "string") {
+    const t = v.trim();
+    return t.length > 0 ? t : undefined;
+  }
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      const s = asString(item);
+      if (s) return s;
+    }
+  }
+  return undefined;
+}
+
+/** Normalize a raw metadata document. Never throws, never returns non-strings. */
+export function sanitizeMetadata(raw: unknown): ProjectMetadata | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const properties = (r.properties && typeof r.properties === "object" ? (r.properties as Record<string, unknown>) : {}) ?? {};
+  return {
+    name: asString(r.name) ?? asString(properties.name),
+    symbol: asString(r.symbol) ?? asString(properties.symbol),
+    description: asString(r.description) ?? asString(properties.description),
+    image: asString(r.image) ?? asString(r.image_url) ?? asString(r.logo) ?? asString(properties.image),
+    twitter: asString(r.twitter) ?? asString(r.x) ?? asString(properties.twitter),
+    website: asString(r.website) ?? asString(r.external_url) ?? asString(properties.website),
+    telegram: asString(r.telegram) ?? asString(properties.telegram),
+    discord: asString(r.discord) ?? asString(properties.discord),
+    raw,
+  };
+}
+
+export function cidOf(uri: unknown): string | null {
+  if (typeof uri !== "string" || !uri) return null;
   if (uri.startsWith("ipfs://")) return uri.slice("ipfs://".length);
   return null;
 }
 
 /** Ordered gateway URLs for an `ipfs://` or `https://` URI (images). */
-export function gatewayUrls(uri: string): string[] {
-  if (!uri) return [];
+export function gatewayUrls(uri: unknown): string[] {
+  if (typeof uri !== "string" || !uri) return [];
   if (uri.startsWith("http://") || uri.startsWith("https://")) return [uri];
   const cid = cidOf(uri);
   if (!cid) return [];
@@ -84,14 +124,15 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   }
 }
 
-/** Resolve a metadata URI through gateways in order. Never throws. */
+/** Resolve a metadata URI through gateways in order. Never throws, always sanitized. */
 export async function fetchMetadata(uri: string): Promise<ProjectMetadata | null> {
+  if (typeof uri !== "string" || !uri) return null;
   const cid = cidOf(uri);
   if (!cid) {
     if (uri.startsWith("http")) {
       try {
         const r = await fetchWithTimeout(uri, 8000);
-        if (r.ok) return (await r.json()) as ProjectMetadata;
+        if (r.ok) return sanitizeMetadata(await r.json());
       } catch {
         return null;
       }
@@ -99,15 +140,17 @@ export async function fetchMetadata(uri: string): Promise<ProjectMetadata | null
     return null;
   }
   const cached = cacheGet(cid);
-  if (cached !== undefined) return cached;
+  // Re-sanitize on read: the cache may hold entries written before the sanitizer
+  // existed, and a stale hostile value must not reach the components either.
+  if (cached !== undefined) return cached === null ? null : sanitizeMetadata(cached.raw ?? cached);
 
   for (const gw of GATEWAYS) {
     try {
       const r = await fetchWithTimeout(gw + cid, 8000);
       if (!r.ok) continue;
-      const json = (await r.json()) as ProjectMetadata;
-      cacheSet(cid, json);
-      return json;
+      const clean = sanitizeMetadata(await r.json());
+      cacheSet(cid, clean);
+      return clean;
     } catch {
       continue;
     }

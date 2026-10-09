@@ -3,13 +3,18 @@ import { gatewayUrls } from "../lib/metadata";
 
 interface Props {
   name: string;
-  imageUri?: string | null;
+  /**
+   * Deliberately typed loose: this comes from third-party IPFS metadata, and a
+   * non-string here once crashed the whole feed inside `.startsWith`.
+   */
+  imageUri?: string | null | unknown;
   size?: number;
 }
 
 /** Image with gateway fallback chain; falls back to a monogram on total failure. */
 export function TokenAvatar({ name, imageUri, size = 34 }: Props) {
-  const urls = useMemo(() => (imageUri ? gatewayUrls(imageUri) : []), [imageUri]);
+  const safeUri = typeof imageUri === "string" ? imageUri : null;
+  const urls = useMemo(() => (safeUri ? gatewayUrls(safeUri) : []), [safeUri]);
   const [idx, setIdx] = useState(0);
   const letters = useMemo(() => {
     const clean = name.replace(/[^a-zA-Z0-9 ]/g, "").trim();
