@@ -15,7 +15,7 @@ import { Simulator } from "../src/components/Simulator";
 import { About } from "../src/components/About";
 import { TokenDetail } from "../src/components/TokenDetail";
 import { TokenAvatar } from "../src/components/TokenAvatar";
-import { sanitizeMetadata, type ProjectMetadata } from "../src/lib/metadata";
+import { sanitizeMetadata, gatewayUrls, type ProjectMetadata } from "../src/lib/metadata";
 import { ETH_PAIR, blocksForHours, EARLIEST_DEPLOYMENT_BLOCK } from "../src/lib/chain";
 import { fmtEth, fmtPrice, fmtPriceFull, fmtTiny } from "../src/lib/format";
 import { buy, freshState, projectLaunch, soldAtGraduation, type LaunchConfig } from "../src/lib/curve";
@@ -203,6 +203,32 @@ const hostileRaw = {
 check("sanitizeMetadata coerces an array image to its first string", sanitizeMetadata(hostileRaw)?.image === "ipfs://bafkreihostile1");
 check("sanitizeMetadata drops an object description", sanitizeMetadata(hostileRaw)?.description === undefined);
 check("sanitizeMetadata falls back to properties.image", sanitizeMetadata({ properties: { image: "ipfs://x" } })?.image === "ipfs://x");
+
+// Regression: the vibe/vibe launcher writes `image` as an OBJECT, not a string, so every
+// logo in the feed was falling back to initials. The old plain-string check was doing its
+// job correctly on a shape it did not expect.
+const launcherImageShape = {
+  name: "Launch Lab",
+  image: { uri: "ipfs://bafkreilogo", mimeType: "image/webp", bytes: 8762, width: 512, height: 512 },
+};
+check(
+  "sanitizeMetadata extracts the uri from an object image (the launcher's shape)",
+  sanitizeMetadata(launcherImageShape)?.image === "ipfs://bafkreilogo",
+  String(sanitizeMetadata(launcherImageShape)?.image),
+);
+check("an empty image object yields no image", sanitizeMetadata({ image: {} })?.image === undefined);
+check(
+  "the gateway chain puts a gateway that actually answers first",
+  (gatewayUrls("ipfs://bafkreiabc")[0] ?? "").includes("gateway.pinata.cloud"),
+  gatewayUrls("ipfs://bafkreiabc")[0],
+);
+check(
+  "TokenAvatar renders a real <img> for the launcher's image shape",
+  (() => {
+    const html = renderToStaticMarkup(createElement(TokenAvatar, { name: "Launch Lab", imageUri: "ipfs://bafkreilogo" }));
+    return html.includes("<img") && html.includes("bafkreilogo") && html.includes("gateway.pinata.cloud");
+  })(),
+);
 check("sanitizeMetadata turns a numeric twitter into a string", sanitizeMetadata(hostileRaw)?.twitter === "12345");
 check("sanitizeMetadata survives a non-object document", sanitizeMetadata("not json") === null && sanitizeMetadata(null) === null);
 

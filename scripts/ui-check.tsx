@@ -102,6 +102,20 @@ check(
 );
 check("activity strip rendered", dom.window.document.querySelectorAll(".strip-bar").length > 0);
 
+// End-to-end for the logo bug: live metadata published `image` as an object, so every
+// avatar fell back to initials. If this passes, real tokens resolve to real image URLs.
+const avatarSrc = () =>
+  Array.from(dom.window.document.querySelectorAll(".tr.clickable .avatar"))
+    .filter((el) => el.tagName === "IMG")
+    .map((el) => el.getAttribute("src") ?? "")
+    .find((src) => src.includes("/ipfs/")) ?? "";
+const sawLogo = await waitFor(() => avatarSrc() !== "", 45_000, "token logos");
+check(
+  "token logos resolve to real image URLs (the launcher publishes image as an object)",
+  sawLogo !== "" && avatarSrc().startsWith("https://"),
+  sawLogo ? avatarSrc().slice(0, 64) : "no row avatar loaded an image",
+);
+
 // Motion layer: mounted, decorative, and cannot swallow clicks.
 const ring = dom.window.document.querySelector(".cursor-ring");
 const dot = dom.window.document.querySelector(".cursor-dot");

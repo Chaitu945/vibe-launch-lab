@@ -11,12 +11,16 @@
  */
 
 const GATEWAYS = [
+  // Measured: from a normal client, only pinata and filebase served a real CID while
+  // ipfs.io, dweb.link, w3s.link and nftstorage.link all answered 403. Order is the
+  // fallback chain, so the ones that actually work come first and a dead host costs
+  // nothing on the common path. flk-ipfs.xyz was dropped after it stopped answering.
+  "https://gateway.pinata.cloud/ipfs/",
+  "https://ipfs.filebase.io/ipfs/",
   "https://ipfs.io/ipfs/",
   "https://dweb.link/ipfs/",
   "https://w3s.link/ipfs/",
   "https://nftstorage.link/ipfs/",
-  "https://gateway.pinata.cloud/ipfs/",
-  "https://flk-ipfs.xyz/ipfs/",
 ];
 
 export interface ProjectMetadata {
@@ -81,6 +85,44 @@ function asString(v: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * The vibe/vibe launcher does not publish `image` as a string. It writes an object:
+ *
+ *   { uri: "ipfs://bafkrei...", mimeType: "image/webp", bytes: 8762, width: 512, height: 512 }
+ *
+ * A plain `asString` correctly refuses that shape, which is why every logo in the feed
+ * silently fell back to initials. Accept the object and pull the URI out of it, along
+ * with the other keys projects use for the same idea.
+ */
+function asImageUri(v: unknown): string | undefined {
+  const direct = asString(v);
+  if (direct) return direct;
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      const s = asImageUri(item);
+      if (s) return s;
+    }
+    return undefined;
+  }
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    for (const key of ["uri", "url", "gateway", "image", "imageUrl", "src"]) {
+      const s = asString(o[key]);
+      if (s) return s;
+    }
+  }
+  return undefined;
+}
+
+/** First usable image URI across the shapes projects actually publish. */
+function pickImage(...candidates: unknown[]): string | undefined {
+  for (const c of candidates) {
+    const s = asImageUri(c);
+    if (s) return s;
+  }
+  return undefined;
+}
+
 /** Normalize a raw metadata document. Never throws, never returns non-strings. */
 export function sanitizeMetadata(raw: unknown): ProjectMetadata | null {
   if (!raw || typeof raw !== "object") return null;
@@ -90,7 +132,7 @@ export function sanitizeMetadata(raw: unknown): ProjectMetadata | null {
     name: asString(r.name) ?? asString(properties.name),
     symbol: asString(r.symbol) ?? asString(properties.symbol),
     description: asString(r.description) ?? asString(properties.description),
-    image: asString(r.image) ?? asString(r.image_url) ?? asString(r.logo) ?? asString(properties.image),
+    image: pickImage(r.image, r.image_url, r.logo, r.imageUrl, properties.image),
     twitter: asString(r.twitter) ?? asString(r.x) ?? asString(properties.twitter),
     website: asString(r.website) ?? asString(r.external_url) ?? asString(properties.website),
     telegram: asString(r.telegram) ?? asString(properties.telegram),
