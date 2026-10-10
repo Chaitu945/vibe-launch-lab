@@ -36,7 +36,7 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
   /**
    * Sanitize here too, not only at the fetch boundary: this component must be safe
    * with whatever metadata object it is handed. A host object rendered as a React
-   * child throws "Objects are not valid as a React child" — caught by the render
+   * child throws "Objects are not valid as a React child", caught by the render
    * check, which is why this exists.
    */
   const meta = useMemo(() => (metadata ? sanitizeMetadata((metadata as { raw?: unknown }).raw ?? metadata) : null), [metadata]);
@@ -110,7 +110,7 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
         </div>
         <div>
           <span>{isV6 ? "Project tax" : "Curve fee"}</span>
-          <b>{taxBps !== null ? `${Number(taxBps) / 100}%` : "—"}</b>
+          <b>{taxBps !== null ? `${Number(taxBps) / 100}%` : "-"}</b>
         </div>
         <div>
           <span>Creator opening buy</span>
@@ -122,7 +122,7 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
         </div>
         <div>
           <span>Launched</span>
-          <b>{ts ? `${agoFromUnix(ts)} ago` : "—"}</b>
+          <b>{ts ? `${agoFromUnix(ts)} ago` : "-"}</b>
         </div>
         <div>
           <span>Generation</span>
@@ -171,8 +171,8 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
         {isV6 ? (
           <p className="muted small">
             Not applicable on a <b>V6 curve</b>: it exposes no reserve or price getters (they revert), so this app does not
-            model its pricing. The price above is derived from the contract's own <code>quoteBuyExactIn()</code> — the
-            marginal price of the next 0.001 ETH — not from a formula. Raised, target, tax and sold counts are read directly
+            model its pricing. The price above is derived from the contract's own <code>quoteBuyExactIn()</code>, the
+            marginal price of the next 0.001 ETH, not from a formula. Raised, target, tax and sold counts are read directly
             from the curve.
           </p>
         ) : (
@@ -192,13 +192,13 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
                   <span>0.01 ETH buy → tokens</span>
                   <b>
                     {check.curveExhausted
-                      ? "curve exhausted — 0 tokens left to sell"
+                      ? "curve exhausted: 0 tokens left to sell"
                       : `${check.tokenDelta.toString()} wei (${fmtTokens(check.chainTokens, 1)} from chain)`}
                   </b>
                 </div>
                 <div className={`row verdict ${check.ok ? "ok" : "bad"}`}>
                   <span>verdict</span>
-                  <b>{check.ok ? "model reproduces the contract" : "MISMATCH — do not trust simulator"}</b>
+                  <b>{check.ok ? "model reproduces the contract" : "MISMATCH: do not trust simulator"}</b>
                 </div>
               </div>
             )}

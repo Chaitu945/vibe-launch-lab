@@ -926,7 +926,7 @@ button.ghost:hover {
   vertical-align: middle;
 }
 
-/* the 'nearly graduating' tag — data, not decoration */
+/* the 'nearly graduating' tag: data, not decoration */
 .tag {
   font-size: 10px;
   font-family: var(--mono);
@@ -982,7 +982,7 @@ button.ghost:hover {
   }
 }
 
-/* a soft aurora behind everything — z-index -1 keeps it under the content and above
+/* a soft aurora behind everything: z-index -1 keeps it under the content and above
    the page background, no layout impact */
 .app::before {
   content: "";

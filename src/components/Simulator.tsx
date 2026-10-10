@@ -141,8 +141,8 @@ export function Simulator() {
         </div>
         <p className="muted small">{PRESETS[preset].note}</p>
         <p className="muted small">
-          This models the <b>classic generations</b> (gen1–gen3): their curve is constant-product over virtual reserves and the
-          math here is verified against their contracts. The newer V6 curves use a different, unrecovered shape — the feed shows
+          This models the <b>classic generations</b> (gen1-gen3): their curve is constant-product over virtual reserves and the
+          math here is verified against their contracts. The newer V6 curves use a different, unrecovered shape, and the feed shows
           their live numbers, but this panel does not simulate them.
         </p>
 
@@ -224,7 +224,7 @@ export function Simulator() {
         <p className="muted small">
           At graduation the curve has sold {fmtTokens(projection.tokensSoldAtGraduation)} of its 800M allocation (
           {projection.pctOfCurveSold.toFixed(1)}%), leaving {(100 - projection.pctOfCurveSold).toFixed(1)}% for the locked pool.
-          Fees taken across the whole curve at graduation: {fmtEth(projection.feeAtGraduation, 4)} ETH — {fmtEth(projection.creatorFeeAtGraduation, 4)} to the
+          Fees taken across the whole curve at graduation: {fmtEth(projection.feeAtGraduation, 4)} ETH: {fmtEth(projection.creatorFeeAtGraduation, 4)} to the
           creator, {fmtEth(projection.protocolFeeAtGraduation, 4)} to the protocol.
         </p>
       </div>
@@ -275,7 +275,7 @@ export function Simulator() {
       <div className="panel">
         <div className="panel-head">
           <b>Will it graduate? (Monte Carlo)</b>
-          <span className="muted small">a model of buyer behaviour you configure — not a prediction</span>
+          <span className="muted small">a model of buyer behaviour you configure, not a prediction</span>
         </div>
         <div className="grid-inputs">
           <label>
@@ -309,14 +309,14 @@ export function Simulator() {
             <b>{mc.medianRaisedEth.toFixed(3)} ETH</b>
           </div>
           <div className="stat">
-            <span>10th–90th pct</span>
+            <span>10th-90th pct</span>
             <b>
-              {mc.p10RaisedEth.toFixed(3)}–{mc.p90RaisedEth.toFixed(3)}
+              {mc.p10RaisedEth.toFixed(3)}-{mc.p90RaisedEth.toFixed(3)}
             </b>
           </div>
           <div className="stat">
             <span>median buys to graduate</span>
-            <b>{mc.medianBuysToGraduate ?? "—"}</b>
+            <b>{mc.medianBuysToGraduate ?? "-"}</b>
           </div>
         </div>
       </div>

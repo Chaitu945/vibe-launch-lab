@@ -1,7 +1,7 @@
 # Token details for the vibe/vibe launch
 
 Fill these into `testnet.vibevibe.fun/create`. Launch settings (pair, tax, allocation, target, holder
-books) are **immutable once created** — review the review screen twice.
+books) are **immutable once created**, so review the review screen twice.
 
 ## Identity
 
@@ -11,13 +11,13 @@ books) are **immutable once created** — review the review screen twice.
 | Ticker | `VLAB` (alternates: `LABL`, `CURVE`) |
 | Category | **Product & Utility** (it is a tool, not a meme) |
 | Image | `submission/logo-512.png` (upload; 1:1, dark background, >512px) |
-| Links | GitHub repo + live demo URL (both go on the project page — this is what "evidence it belongs to the submitting creator" means) |
+| Links | GitHub repo + live demo URL (both go on the project page, which is what "evidence it belongs to the submitting creator" means) |
 
 ## Description (paste, trim if the field is short)
 
 > Launch Lab is a free analytics and simulation tool for vibe/vibe on Robinhood Chain Testnet.
 >
-> It scans the launchpad's own `TokenLaunched` logs across every factory generation and shows what is actually live right now — raised, progress to graduation, price, FDV and whether the curve has completed — without an indexer or an API key. Alongside that it simulates a launch configuration before you commit one: what your opening buy costs you, what the price does on the way to the target, what the creator fee split is worth at graduation, and how often the curve would fill under a buy distribution you choose.
+> It scans the launchpad's own `TokenLaunched` logs across every factory generation and shows what is actually live right now: raised, progress to graduation, price, FDV and whether the curve has completed, all without an indexer or an API key. Alongside that it simulates a launch configuration before you commit one: what your opening buy costs you, what the price does on the way to the target, what the creator fee split is worth at graduation, and how often the curve would fill under a buy distribution you choose.
 >
 > Every number is checked against the deployed contracts: the app calls each curve's `spotPriceWad()` and `quoteBuy()` and compares them with its own math. If they disagree, the app says so instead of showing a confident wrong number.
 >
@@ -39,6 +39,6 @@ Straight from the vibe/vibe docs (Rewards and allocations):
 
 - Vibecoded/product creators: *"a working demo or MVP with evidence that it belongs to the submitting creator."*
 
-That means the repo and the deployed demo, both under your account, linked from the project page — not a
+That means the repo and the deployed demo, both under your account, linked from the project page, not a
 screenshot and not a description of a plan. Keep the repo public, keep the demo URL live, and put both in
 the project's links.

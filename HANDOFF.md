@@ -1,4 +1,4 @@
-# Handoff — getting Launch Lab live in ~5 minutes
+# Handoff: getting Launch Lab live in ~5 minutes
 
 You have the source tree. `node_modules` is deliberately not included.
 
@@ -33,7 +33,7 @@ git push -u origin main
 ```
 
 > **Don't have git history already?** If you unzipped a tree without `.git`, the `git init` path above
-> works as-is. If `.git` came along, `git remote add` + `git push` is all you need — the commit is already made.
+> works as-is. If `.git` came along, `git remote add` + `git push` is all you need. The commit is already made.
 
 ## 3. Deploy (pick one)
 
@@ -45,7 +45,7 @@ git push -u origin main
 **GitHub Pages (no extra account)**
 - `.github/workflows/deploy-pages.yml` is already included.
 - Repo → Settings → Pages → Source = **GitHub Actions**, then push to `main`. The URL is
-  `https://<you>.github.io/vibe-launch-lab/` — `vite.config.ts` already sets `base: "./"`, so it works
+  `https://<you>.github.io/vibe-launch-lab/`: `vite.config.ts` already sets `base: "./"`, so it works
   from a subpath with no changes.
 
 **Check the live URL in a private window** before you paste it anywhere: scan launches, open a row, hit
@@ -56,15 +56,15 @@ worse than no demo URL for the reward track.
 
 Follow `submission/launch-checklist.md`: add chain 46630 to your wallet, claim test ETH from the
 faucet, create the token on `testnet.vibevibe.fun/create` with the settings in
-`submission/token-details.md`, and paste **the repo URL + the live demo URL** into the project's links —
+`submission/token-details.md`, and paste **the repo URL + the live demo URL** into the project's links,
 that pairing is what "evidence that it belongs to the submitting creator" means.
 
 Token image: `submission/logo-512.png` (previews at 64/32px included).
 
 ## Notes if you change things
 
-- `src/lib/chain.ts` — factory address book, verified constants, ABIs. If a new factory generation ships,
+- `src/lib/chain.ts`: factory address book, verified constants, ABIs. If a new factory generation ships,
   it goes here or the feed silently misses it (the UI states this limitation).
-- `src/lib/curve.ts` — the curve math. `scripts/modelcheck.mjs` will tell you if you break it.
+- `src/lib/curve.ts`: the curve math. `scripts/modelcheck.mjs` will tell you if you break it.
 - Never remove the decode-failure counter in `src/lib/scan.ts`: conflating a decode bug with an RPC limit
   is how this app once returned zero launches with no error.

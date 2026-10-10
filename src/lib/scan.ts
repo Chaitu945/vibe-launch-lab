@@ -22,8 +22,8 @@ export const client = createPublicClient({
 /**
  * Raw log query by address and range.
  *
- * No `topics` parameter is sent on purpose: this RPC **ignores it** — three
- * different topic0 filters returned the identical log set — so requesting a
+ * No `topics` parameter is sent on purpose: this RPC **ignores it**: three
+ * different topic0 filters returned the identical log set, so requesting a
  * specific event buys nothing and hides that fact.
  */
 async function rawGetLogs(params: {
@@ -87,7 +87,7 @@ export interface LaunchRow extends RawLaunch {
 }
 
 /* ------------------------------------------------------------------ *
- * Normalized row accessors — the UI should not care whether a row came
+ * Normalized row accessors: the UI should not care whether a row came
  * from a classic curve or a V6 one.
  * ------------------------------------------------------------------ */
 
@@ -123,7 +123,7 @@ export interface ScanProgress {
 
 export interface ScanOptions {
   /**
-   * Blocks to scan back — or `"all"`, meaning back to the earliest factory
+   * Blocks to scan back, or `"all"`, meaning back to the earliest factory
    * deployment (tens of millions of blocks; expect minutes and tens of thousands
    * of rows).
    */
@@ -137,8 +137,8 @@ export interface ScanOptions {
 /**
  * Classify one log from a factory.
  *
- * This RPC **ignores the `topics` parameter entirely** — three different topic0
- * filters returned the identical log set — so every log of a factory arrives here
+ * This RPC **ignores the `topics` parameter entirely**: three different topic0
+ * filters returned the identical log set, so every log of a factory arrives here
  * and the discriminator has to be client-side: a log is a launch only if its topic0
  * is one of the launch events AND it decodes. Anything else is a different protocol
  * event and is counted separately, not reported as a failure.
@@ -201,7 +201,7 @@ export async function scanLaunches(
    *
    * A generation-ordered list means a long scan ("all") spends its first minutes in
    * the oldest, quietest region while recent launches sit at the end. Newest-first
-   * makes partial results useful — and if the user hits stop, what they have is the
+   * makes partial results useful, and if the user hits stop, what they have is the
    * most recent activity rather than the oldest.
    */
   tasks.sort((a, b) => b.to - a.to);
@@ -232,7 +232,7 @@ export async function scanLaunches(
         // Re-split this task into two smaller halves and retry.
         const mid = t.to - half;
         tasks.splice(i, 1, { factory: t.factory, from: mid, to: t.to }, { factory: t.factory, from: t.from, to: mid });
-        opts.onProgress?.({ label: `RPC limit hit — halving window to ${half.toLocaleString()} blocks`, doneBlocks: done, totalBlocks: blocksTotal, launches: out.length });
+        opts.onProgress?.({ label: `RPC limit hit, halving window to ${half.toLocaleString()} blocks`, doneBlocks: done, totalBlocks: blocksTotal, launches: out.length });
         continue;
       }
       // Give up on this slice rather than aborting the whole scan.
@@ -269,7 +269,7 @@ export async function scanLaunches(
     }
     done += t.to - t.from;
     opts.onProgress?.({
-      label: `${t.factory.label} ${t.from.toLocaleString()}–${t.to.toLocaleString()}`,
+      label: `${t.factory.label} ${t.from.toLocaleString()}-${t.to.toLocaleString()}`,
       doneBlocks: done,
       totalBlocks: blocksTotal,
       launches: out.length,
@@ -423,7 +423,7 @@ const BATCH = 8;
  * Enrich launches with on-chain identity (ERC-20 name/symbol) and curve state.
  *
  * Both curve implementations are read in the same multicall with allowFailure, so
- * a row's generation is determined by which set of reads actually succeeded —
+ * a row's generation is determined by which set of reads actually succeeded, since
  * classic curves revert on the V6 getters and vice versa.
  *
  * V6 has no reserve or price getter at all, so its price is derived from the
@@ -441,7 +441,7 @@ export async function enrichLaunches(rows: RawLaunch[], opts: { onProgress?: (do
     const slice = rows.slice(start, start + BATCH);
     /**
      * Addresses come from decoded logs, so a malformed one is possible. `getAddress`
-     * THROWS on a bad checksum/length — outside the multicall's try/catch — which is
+     * THROWS on a bad checksum/length, outside the multicall's try/catch, which is
      * exactly the kind of one-bad-row failure that blanks a UI. Substitute the zero
      * address instead: the reads then fail individually (allowFailure) and the row
      * renders with dashes plus an explicit reason.
@@ -580,7 +580,7 @@ export async function enrichLaunches(rows: RawLaunch[], opts: { onProgress?: (do
         progressBps: progress,
         priceSource: statePrice !== null ? "state" : quotePriceWad !== null ? "quote" : null,
         enrichmentError: badAddress(r)
-          ? "invalid address in launch log — reads skipped"
+          ? "invalid address in launch log, reads skipped"
           : results.length === 0
             ? "multicall unavailable"
             : null,
@@ -657,7 +657,7 @@ export async function verifyCurve(curveAddress: string, probeEth = 10n ** 16n): 
   const spotDelta = modelSpot - chainSpot;
   const tokenDelta = modelTokens - chainTokens;
   /**
-   * A curve that has sold out returns 0 tokens from quoteBuy — it is not a model
+   * A curve that has sold out returns 0 tokens from quoteBuy, and that is not a model
    * failure, it is the curve refusing to sell. Treat "both agree there is nothing
    * left" as a pass, and say so, rather than reporting a mismatch.
    */

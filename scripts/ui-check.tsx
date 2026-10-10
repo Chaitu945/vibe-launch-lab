@@ -19,7 +19,7 @@ function expose(key: string, value: unknown) {
   try {
     Object.defineProperty(globalThis, key, { value, writable: true, configurable: true });
   } catch {
-    /* some globals (e.g. navigator on Node 24) are getter-only — not needed by React DOM */
+    /* some globals (e.g. navigator on Node 24) are getter-only, not needed by React DOM */
   }
 }
 expose("window", dom.window);
@@ -38,7 +38,7 @@ const { default: App } = await import("../src/App");
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
-  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${detail ? `: ${detail}` : ""}`);
   if (!ok) failures++;
 }
 

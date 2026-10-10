@@ -2,7 +2,7 @@
 
 Pure stdlib: the PNG is written by hand (zlib + struct) with 2x supersampling for
 antialiasing. The curve drawn is literally the protocol's own price curve
-(price = (E0 + real)^2 / (E0 * X0)), normalised — so the logo is the product.
+(price = (E0 + real)^2 / (E0 * X0)), normalised, so the logo is the product.
 
     python tools/make-logo.py
 """

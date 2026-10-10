@@ -1,7 +1,7 @@
 /**
  * Render + math acceptance checks (no browser needed).
  *
- *   1. Renders every tab to static markup with react-dom/server — a component
+ *   1. Renders every tab to static markup with react-dom/server: a component
  *      that throws on render fails here.
  *   2. Checks the simulator's headline numbers against values derived
  *      independently from chain state (see the comment on each expectation).
@@ -22,7 +22,7 @@ import { buy, freshState, projectLaunch, soldAtGraduation, type LaunchConfig } f
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
-  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${detail ? `: ${detail}` : ""}`);
   if (!ok) failures++;
 }
 

@@ -1,5 +1,5 @@
 /**
- * Bonding-curve math — the protocol's own arithmetic, in pure bigint.
+ * Bonding-curve math: the protocol's own arithmetic, in pure bigint.
  *
  * MODEL (established from chain state, then checked against the contracts)
  * ----------------------------------------------------------------------
@@ -209,7 +209,7 @@ export function progressBps(s: CurveState): number | null {
   return Number((s.realEth * BPS) / s.target);
 }
 
-/** Tokens the curve sells on the way to graduation — the "% of curve sold" denominator. */
+/** Tokens the curve sells on the way to graduation, the "% of curve sold" denominator. */
 export function soldAtGraduation(cfg: LaunchConfig): bigint {
   const k = cfg.e0 * cfg.x0;
   return cfg.x0 - k / (cfg.e0 + cfg.target);
@@ -409,7 +409,7 @@ export function monteCarlo(state: CurveState, input: MonteCarloInputs): MonteCar
 }
 
 /* ------------------------------------------------------------------ *
- * Config scoring — a stated rubric, not a black box.
+ * Config scoring: a stated rubric, not a black box.
  * ------------------------------------------------------------------ */
 
 export interface ScoreInputs {
@@ -437,7 +437,7 @@ export function scoreConfig(input: ScoreInputs): ScoreResult {
   const { projection, monteCarlo, creatorSupplyPct } = input;
   const lines: ScoreLine[] = [];
 
-  // 1. Reachability — does the curve graduate under a plausible buy distribution?
+  // 1. Reachability: does the curve graduate under a plausible buy distribution?
   const reach = Math.min(30, Math.round(monteCarlo.graduationRate * 30));
   lines.push({
     label: "Graduation reachability",
@@ -448,7 +448,7 @@ export function scoreConfig(input: ScoreInputs): ScoreResult {
         ? "Target is comfortably reachable under your buy assumptions."
         : monteCarlo.graduationRate > 0.3
           ? "Target is reachable but needs a real audience, not a handful of buys."
-          : "Target looks unreachable at this buy distribution — lower it or bring volume.",
+          : "Target looks unreachable at this buy distribution, so lower it or bring volume.",
   });
 
   // 2. Creator skin in the game (initial buy relative to target).
@@ -459,7 +459,7 @@ export function scoreConfig(input: ScoreInputs): ScoreResult {
     max: 25,
     verdict:
       projection.initialBuyPctOfTarget > 3
-        ? "Strong opening buy — you are signalling before anyone else commits."
+        ? "Strong opening buy: you are signalling before anyone else commits."
         : projection.initialBuyPctOfTarget > 0.5
           ? "Modest opening buy."
           : "No meaningful opening buy; expect to rely entirely on outside buyers.",
@@ -475,7 +475,7 @@ export function scoreConfig(input: ScoreInputs): ScoreResult {
     verdict: `${upside.toFixed(1)}x from launch price to graduation price. Below ~3x early buyers rarely chase.`,
   });
 
-  // 4. Creator's own share — too much supply at launch reads as exit liquidity.
+  // 4. Creator's own share: too much supply at launch reads as exit liquidity.
   const sharePoints = creatorSupplyPct <= 10 ? 20 : creatorSupplyPct <= 25 ? 12 : 4;
   lines.push({
     label: "Creator/airdrop share of supply",
@@ -486,7 +486,7 @@ export function scoreConfig(input: ScoreInputs): ScoreResult {
         ? "Healthy: most supply is on the curve."
         : creatorSupplyPct <= 25
           ? "Acceptable, but disclose it clearly on the project page."
-          : "Most supply sits off the curve — expect traders to treat it as exit liquidity.",
+          : "Most supply sits off the curve, so expect traders to treat it as exit liquidity.",
   });
 
   const total = lines.reduce((a, l) => a + l.points, 0);

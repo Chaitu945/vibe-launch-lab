@@ -3,7 +3,7 @@ import { parseAbi } from "viem";
 /**
  * Robinhood Chain Testnet + vibe/vibe protocol constants.
  *
- * PROVENANCE (important — this tool is only as good as these numbers)
+ * PROVENANCE (important: this tool is only as good as these numbers)
  * ------------------------------------------------------------------
  * The vibe/vibe contracts are NOT source-verified on the explorer and there is no
  * published ABI. Everything here was established from chain state plus the public
@@ -14,7 +14,7 @@ import { parseAbi } from "viem";
  *    (MIT), then re-confirmed here by decoding live logs.
  *  - Factory address book: the three generations below are the ones observed
  *    emitting `TokenLaunched` on chain. A future generation that is not listed
- *    will be missed — that limitation is real and stated in the UI.
+ *    will be missed. That limitation is real and stated in the UI.
  *  - Fee policy (125 bps, 75% creator / 25% protocol) and graduation target
  *    (5 ETH) are read live from each curve where possible; the constants below
  *    are defaults used only when a read fails.
@@ -32,7 +32,7 @@ export const CHAIN = {
   multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11",
 } as const;
 
-/** ~0.15s per block measured on chain — used for time estimates in the UI. */
+/** ~0.15s per block measured on chain, used for time estimates in the UI. */
 export const BLOCK_SECONDS = 0.15;
 
 /** Blocks for a given number of hours at the measured block time. */
@@ -64,7 +64,7 @@ export const FACTORIES: FactoryInfo[] = [
     deploymentBlock: 95_916_239,
     feeBps: 100n,
     creatorShareBps: 5_000n,
-    netGraduationTarget: 5_000_000_000_000_000n, // 0.005 ETH — 1000x smaller than gen3
+    netGraduationTarget: 5_000_000_000_000_000n, // 0.005 ETH, 1000x smaller than gen3
     initialVirtualEthReserve: 1_764_594_628_672_298n,
     supportsQuotes: false,
     note: "Delisted by the operator but still emitting launches when last checked on-chain (2026-09-13).",
@@ -76,7 +76,7 @@ export const FACTORIES: FactoryInfo[] = [
     deploymentBlock: 108_435_450,
     feeBps: 125n,
     creatorShareBps: 7_500n,
-    netGraduationTarget: null, // not independently verified — never assumed
+    netGraduationTarget: null, // not independently verified, never assumed
     initialVirtualEthReserve: null,
     supportsQuotes: false,
     note: "Largest generation by launch count. Fee economics match the current one; graduation params unverified.",
@@ -113,7 +113,7 @@ export const FACTORY_BY_ADDRESS = new Map<string, FactoryInfo>(
   FACTORIES.map((f) => [f.address.toLowerCase(), f]),
 );
 
-/** Earliest factory deployment — the floor for a scan of "everything". */
+/** Earliest factory deployment: the floor for a scan of "everything". */
 export const EARLIEST_DEPLOYMENT_BLOCK = Math.min(...FACTORIES.map((f) => f.deploymentBlock));
 
 export function generationOf(address: string): FactoryInfo | null {
@@ -155,7 +155,7 @@ export const CANONICAL_PAIR = {
   buybackExecutor: "0xC9975c306b0bB34a2732a7b96FED54fe8e0e7D29",
 } as const;
 
-/** Event topic0 hashes — recovered from the frontend bundle, re-confirmed by decoding live logs. */
+/** Event topic0 hashes: recovered from the frontend bundle, re-confirmed by decoding live logs. */
 export const TOPICS = {
   TokenLaunched: "0x56eef5c350583250e71791d6d659f4d181796c9deb08b977252efc3995aa9279",
   TokenLaunchedQuoted: "0x34041bc557672fe6a73853ece671e7715108f75e25427bfddf3e2f8e2085a0e7",
@@ -165,7 +165,7 @@ export const TOPICS = {
   Graduated: "0xc1eaf6441a62895ddec3612cee606bd971cf6b1b38dd700f103e7b6b94167d0c",
   /**
    * V6 launch event. Unlike everything above this was NOT in the frontend bundle
-   * and is not in 4byte.directory — it was recovered by decoding live logs emitted
+   * and is not in 4byte.directory. It was recovered by decoding live logs emitted
    * by the V6 factory. Its layout is positional, see decodeV6Launch().
    */
   V6Launched: "0xa7e8032bfd07a9fbcde50eabe91eb2901faee6dbddd9cced579491d9b07ef5c8",
@@ -236,7 +236,7 @@ export const ERC20_ABI = parseAbi([
 ]);
 
 /**
- * V6 curve surface. Renamed relative to the older generations — the reserve and
+ * V6 curve surface. Renamed relative to the older generations: the reserve and
  * price getters (`virtualEthReserve`, `virtualTokenReserve`, `spotPriceWad`,
  * `fdvWei`) simply do not exist on a V6 curve and revert, while `pairPrincipal`
  * (raised), `targetPairUnits`, `sold`, `baseTaxBps`, `createdAt` and the decaying

@@ -14,7 +14,7 @@ interface State {
  * Nothing in this app should ever take the page down to a blank screen.
  *
  * A render-time exception with no boundary unmounts the entire tree in React 19,
- * which is exactly what a white page is — and it hides the error from whoever
+ * which is exactly what a white page is, and it hides the error from whoever
  * could report it. This catches render errors AND unhandled promise rejections /
  * window errors, and prints them in the UI so a failure is diagnosable from a
  * screenshot instead of guesswork.
@@ -63,7 +63,7 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className="crash">
         <h2>{hasRender ? "The feed crashed while rendering" : "An async error was reported"}</h2>
         <p className="muted small">
-          This is a bug, not a data problem. Nothing below is fabricated — it is the actual exception, shown instead of a blank
+          This is a bug, not a data problem. Nothing below is fabricated: it is the actual exception, shown instead of a blank
           page.
         </p>
         {error && (

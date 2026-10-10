@@ -1,7 +1,7 @@
 /**
  * Acceptance harness: runs the app's OWN modules (src/lib/scan.ts, src/lib/curve.ts)
  * against Robinhood Chain Testnet and asserts the model matches the deployed
- * contracts. This is not a reimplementation — it imports what the UI imports.
+ * contracts. This is not a reimplementation: it imports what the UI imports.
  *
  *   npx tsx scripts/harness.ts
  */
@@ -10,7 +10,7 @@ import { fmtEth, fmtPrice, fmtTokens, pct } from "../src/lib/format";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
-  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${detail ? `: ${detail}` : ""}`);
   if (!ok) failures++;
 }
 
@@ -49,7 +49,7 @@ for (const r of rows) {
   console.log(
     `${r.name.padEnd(18)} ${(r.symbol ?? "").padEnd(10)} ${r.factoryLabel.padEnd(4)} ${r.curveKind.padEnd(7)} raised=${fmtEth(rowRaised(r))} target=${
       rowTarget(r) !== null && rowTarget(r)! > 0n ? fmtEth(rowTarget(r)) : "unverified"
-    } progress=${pct(rowProgressBps(r))} price=${fmtPrice(r.spotPriceWad)}${r.priceSource === "quote" ? "(quote)" : ""} fdv=${fmtEth(r.fdvWei, 3)} tax=${rowTaxBps(r) !== null ? `${Number(rowTaxBps(r)) / 100}%` : "—"}`,
+    } progress=${pct(rowProgressBps(r))} price=${fmtPrice(r.spotPriceWad)}${r.priceSource === "quote" ? "(quote)" : ""} fdv=${fmtEth(r.fdvWei, 3)} tax=${rowTaxBps(r) !== null ? `${Number(rowTaxBps(r)) / 100}%` : "-"}`,
   );
 }
 check("enrichment returned rows", rows.length > 0);
@@ -114,7 +114,7 @@ for (const r of rows.filter((x) => x.curveKind === "classic")) {
     allGood = allGood && spotOk && tokenOk;
     console.log(
       `${r.symbol.padEnd(10)} spot: ${spotOk ? "exact" : `delta ${v.spotDeltaWei}`} · quoteBuy(0.01 ETH): ${
-        v.curveExhausted ? "curve exhausted (0 tokens left — chain and model agree)" : `chain=${fmtTokens(v.chainTokens, 4)} model delta=${v.tokenDelta} wei`
+        v.curveExhausted ? "curve exhausted (0 tokens left, chain and model agree)" : `chain=${fmtTokens(v.chainTokens, 4)} model delta=${v.tokenDelta} wei`
       } · fee=${v.feeBps}bps`,
     );
   } catch (e) {

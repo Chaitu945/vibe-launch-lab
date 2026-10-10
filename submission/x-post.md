@@ -4,8 +4,8 @@
 
 > spent the weekend building on top of vibe/vibe instead of complaining about liquidity
 >
-> Launch Lab: reads every launch off Robinhood Chain Testnet — all three factory generations, not just
-> the newest one — and simulates a launch config before you commit it
+> Launch Lab: reads every launch off Robinhood Chain Testnet across all three factory generations, not just
+> the newest one, and simulates a launch config before you commit it
 >
 > the part i care about: it calls each curve's own quoteBuy() and spotPriceWad() and checks its math
 > against the contract. spot price matches exactly, token output to 1 wei. if it ever disagreed with
@@ -25,16 +25,16 @@ Alt hook (shorter, less technical):
 
 ## Discord / Telegram (project showcase)
 
-> **Launch Lab** — unofficial analytics + curve simulator for the vibe/vibe testnet
+> **Launch Lab**: unofficial analytics + curve simulator for the vibe/vibe testnet
 >
 > What it does:
 > • scans TokenLaunched logs across **all three factory generations** (the retired one still produces
-> launches — indexing only the newest one misses most of them)
+> launches, since indexing only the newest one misses most of them)
 > • shows live raised/progress/price/FDV for anything on a curve, with an hourly activity strip so you
 > can see the launch waves
 > • simulates a config before you commit: opening buy, price ladder, creator fee at graduation,
 > Monte Carlo on "will this even graduate"
-> • every token row has a **model vs contract** check — it calls the curve's own quoteBuy/spotPriceWad
+> • every token row has a **model vs contract** check: it calls the curve's own quoteBuy/spotPriceWad
 > and compares. spot exact, tokens to 1 wei
 >
 > Token: <token link> · Demo: <demo url> · Code: <repo url>

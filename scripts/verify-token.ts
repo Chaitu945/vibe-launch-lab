@@ -81,7 +81,7 @@ ok("transfers unlocked", unlocked);
 ok("curve", curveAddr ?? "no curve() member");
 
 if (!curveAddr) {
-  console.log("\nNo curve contract — this token was not launched through a vibevibe curve.");
+  console.log("\nNo curve contract: this token was not launched through a vibevibe curve.");
   process.exit(0);
 }
 
@@ -143,9 +143,9 @@ if (classicArgs) {
 } else if (v6Hit) {
   ok("launchId (topic1)", String(BigInt(v6Hit.topics[1] ?? "0x0")));
   ok("project treasury (topic2)", v6Hit.topics[2]);
-  ok("name from event", v6Hit.name ?? "—");
-  ok("symbol from event", v6Hit.symbol ?? "—");
-  ok("metadata URI from event", v6Hit.uri ?? "—");
+  ok("name from event", v6Hit.name ?? "-");
+  ok("symbol from event", v6Hit.symbol ?? "-");
+  ok("metadata URI from event", v6Hit.uri ?? "-");
 }
 
 // ---------- curve: classic surface ----------
@@ -166,7 +166,7 @@ if (isClassic) {
   console.log(`\nCURVE ${curveAddr} (classic)`);
   ok("raised", `${fmtEth(classic.realEth)} ETH`);
   ok("graduation target", `${fmtEth(classic.target)} ETH`);
-  ok("progress", classic.target && classic.realEth !== null ? pct(Number((classic.realEth * 10_000n) / classic.target)) : "—");
+  ok("progress", classic.target && classic.realEth !== null ? pct(Number((classic.realEth * 10_000n) / classic.target)) : "-");
   ok("spot price", `${fmtPrice(classic.spot)} ETH`);
   ok("FDV", `${fmtEth(classic.fdv, 4)} ETH`);
   ok("total fee bps", String(classic.feeBps));
@@ -205,27 +205,27 @@ const v6 = {
 };
 
 if (v6.principal === null && v6.target === null) {
-  console.log(`\nCURVE ${curveAddr}: neither the classic nor the V6 surface responds — unknown implementation.`);
+  console.log(`\nCURVE ${curveAddr}: neither the classic nor the V6 surface responds, so the implementation is unknown.`);
   process.exit(0);
 }
 
 const quotePriceWad =
   v6.lo !== null && v6.hi !== null && v6.hi > v6.lo ? ((2n * 10n ** 15n - 10n ** 15n) * 10n ** 18n) / (v6.hi - v6.lo) : null;
 
-console.log(`\nCURVE ${curveAddr} (V6 — renamed surface, no reserve/price getters)`);
+console.log(`\nCURVE ${curveAddr} (V6: renamed surface, no reserve/price getters)`);
 ok("raised (pairPrincipal)", `${fmtEth(v6.principal)} ETH`);
 ok("graduation target", `${fmtEth(v6.target)} ETH`);
-ok("progress", v6.principal !== null && v6.target !== null && v6.target > 0n ? pct(Number((v6.principal * 10_000n) / v6.target)) : "—");
+ok("progress", v6.principal !== null && v6.target !== null && v6.target > 0n ? pct(Number((v6.principal * 10_000n) / v6.target)) : "-");
 ok("tokens sold", fmtTokens(v6.sold));
-ok("trade tax (baseTaxBps)", v6.taxBps !== null ? `${Number(v6.taxBps) / 100}%` : "—");
-ok("current decaying rate", v6.rateBps !== null ? `${Number(v6.rateBps) / 100}%` : "—");
+ok("trade tax (baseTaxBps)", v6.taxBps !== null ? `${Number(v6.taxBps) / 100}%` : "-");
+ok("current decaying rate", v6.rateBps !== null ? `${Number(v6.rateBps) / 100}%` : "-");
 ok("price (from quote)", `${fmtPrice(quotePriceWad)} ETH`);
-ok("FDV (from quote)", quotePriceWad !== null && totalSupply !== null ? `${fmtEth((quotePriceWad * totalSupply) / 10n ** 18n, 4)} ETH` : "—");
+ok("FDV (from quote)", quotePriceWad !== null && totalSupply !== null ? `${fmtEth((quotePriceWad * totalSupply) / 10n ** 18n, 4)} ETH` : "-");
 ok("pair currency", v6.pairCurrency && v6.pairCurrency !== "0x0000000000000000000000000000000000000000" ? v6.pairCurrency : "native ETH");
 ok("project treasury", v6.projectTreasury);
 ok("factory()", v6.factory);
 ok("complete", String(v6.complete));
-ok("created at", v6.createdAt !== null ? new Date(Number(v6.createdAt) * 1000).toISOString() : "—");
+ok("created at", v6.createdAt !== null ? new Date(Number(v6.createdAt) * 1000).toISOString() : "-");
 
 console.log(`\nNOTE  the V6 curve shape is not recovered, so no model-vs-contract check is possible here.`);
 console.log(`      raised, target, sold and tax are read directly; price is the marginal price from`);

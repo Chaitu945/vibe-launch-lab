@@ -13,7 +13,7 @@ export function About() {
         </p>
         <p>
           Two things it does that the launcher does not: it scans launch logs across <i>every</i> factory generation so tokens
-          from older generations still show up, and it lets you model a launch configuration before you commit one — including
+          from older generations still show up, and it lets you model a launch configuration before you commit one, including
           what the curve does to your own opening buy.
         </p>
       </section>
@@ -31,12 +31,12 @@ export function About() {
           </li>
           <li>
             <b>Factory address book</b>: three generations are known to emit launches ({FACTORIES.map((f) => f.label).join(", ")}).
-            Liveness is an on-chain observation here, not a label — the "retired" generation was still producing launches when it
+            Liveness is an on-chain observation here, not a label: the "retired" generation was still producing launches when it
             was last checked.
           </li>
           <li>
             <b>Curve math</b>: constant product over virtual reserves, with the fee taken before the reserves move. Verified
-            against deployed curves — see below.
+            against deployed curves. See below.
           </li>
           <li>
             <b>Project names</b> come from the token contract itself (<code>name()</code>/<code>symbol()</code>); images and
@@ -119,7 +119,7 @@ export function About() {
           <li>
             <b>Its launch event is undocumented.</b> It is absent from the frontend bundle and unknown to 4byte.directory,
             because it carries the token's name, symbol and metadata URI as three dynamic strings. This app decodes it by
-            position, and validates every field (offsets inside the data, printable strings, address-shaped curve) — a log that
+            position, and validates every field (offsets inside the data, printable strings, address-shaped curve). A log that
             fails those checks is reported as a decode failure rather than shown.
           </li>
           <li>
@@ -130,7 +130,7 @@ export function About() {
           </li>
           <li>
             <b>Its curve shape is not recovered</b>, so the simulator does not model it. V6 prices shown here are derived from
-            the contract's own <code>quoteBuyExactIn()</code> — the marginal price of the next 0.001 ETH — and are labelled{" "}
+            the contract's own <code>quoteBuyExactIn()</code>, the marginal price of the next 0.001 ETH, and are labelled{" "}
             <i>from quote</i> rather than presented as a formula this app claims to understand.
           </li>
         </ul>
@@ -145,13 +145,13 @@ export function About() {
         <ul>
           <li>
             <b>Unknown factory generations.</b> The RPC refuses address-less log queries, so factories must be named explicitly.
-            A generation deployed after this build is invisible until added here — this is exactly what happened with V6, which
+            A generation deployed after this build is invisible until added here. This is exactly what happened with V6, which
             was found by decoding a live launch rather than from any published list. A feed that looks complete can still be
             incomplete.
           </li>
           <li>
             <b>Event filters do not work on this RPC.</b> The <code>topics</code> parameter is ignored
-            entirely — three different topic0 filters returned the identical log set — so every log from a factory is fetched
+            entirely: three different topic0 filters returned the identical log set, so every log from a factory is fetched
             and classified client-side. Non-launch protocol events are counted and reported as ignored; only a log whose topic0
             <i>is</i> a launch event but fails to decode is surfaced as an error.
           </li>

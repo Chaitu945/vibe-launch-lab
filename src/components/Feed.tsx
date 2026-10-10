@@ -14,7 +14,7 @@ const PAGE = 24;
 /**
  * Windows are expressed in HOURS and converted at the measured block time, so the
  * labels mean what they say. (They used to be round block counts labelled after
- * the fact — which is why there was a stray "~17 hours".)
+ * the fact, which is why there was a stray "~17 hours".)
  */
 const WINDOWS: { label: string; hours: number | null }[] = [
   { label: "1 hour", hours: 1 },
@@ -99,7 +99,7 @@ export function Feed() {
         res.decodeFailures > 0 ? `${res.decodeFailures} log(s) failed to decode: ${res.firstDecodeError ?? "unknown error"}` : null,
       );
       setIgnored(res.ignoredLogs);
-      setStage(`found ${fmtInt(res.launches.length)} launches — reading their curves…`);
+      setStage(`found ${fmtInt(res.launches.length)} launches: reading their curves…`);
       const page = res.launches.slice(0, PAGE);
       const enriched = await enrichLaunches(page, { onProgress: () => undefined, shouldStop: () => stopRef.current });
       setRows(enriched);
@@ -221,8 +221,8 @@ export function Feed() {
 
       {windowHours === null && (
         <p className="muted small">
-          “all” scans back to the first factory deployment
-          {head ? ` — about ${fmtInt(Math.round((head - EARLIEST_DEPLOYMENT_BLOCK) / 1000))}k blocks from here` : ""}. Expect
+          "all" scans back to the first factory deployment
+          {head ? `, about ${fmtInt(Math.round((head - EARLIEST_DEPLOYMENT_BLOCK) / 1000))}k blocks from here` : ""}. Expect
           minutes of RPC calls and tens of thousands of launches; rows are enriched 24 at a time and the activity strip only
           charts the most recent 48 hours.
         </p>
@@ -242,10 +242,10 @@ export function Feed() {
         </div>
       )}
       {error && <p className="error">RPC error: {error}</p>}
-      {decodeWarn && <p className="error">decode warning — {decodeWarn}</p>}
+      {decodeWarn && <p className="error">decode warning: {decodeWarn}</p>}
       {!decodeWarn && ignored > 0 && (
         <p className="muted small">
-          {fmtInt(ignored)} other protocol event(s) ignored — this RPC ignores event filters, so every log from a factory is
+          {fmtInt(ignored)} other protocol event(s) ignored: this RPC ignores event filters, so every log from a factory is
           classified client-side and non-launch events are counted here rather than treated as errors.
         </p>
       )}
@@ -285,7 +285,7 @@ export function Feed() {
             <div className="panel">
               <div className="panel-head">
                 <b>Launch activity per hour</b>
-                <span className="muted small">bursts, not a steady stream — this is why the feed scans windows, not a fixed range</span>
+                <span className="muted small">bursts, not a steady stream, which is why the feed scans windows rather than a fixed range</span>
               </div>
               <ActivityStrip buckets={buckets} />
             </div>
@@ -348,7 +348,7 @@ export function Feed() {
                 <span>
                   <span className={`badge ${r.generation}`}>{r.factoryLabel}</span>
                 </span>
-                <span className="muted small">{rowLaunchTimestamp(r) ? agoFromUnix(rowLaunchTimestamp(r)!) : "—"}</span>
+                <span className="muted small">{rowLaunchTimestamp(r) ? agoFromUnix(rowLaunchTimestamp(r)!) : "-"}</span>
                 <span className="num">{fmtEth(r.initialBuy, 3)}</span>
                 <span className="num">{fmtEth(rowRaised(r), 3)}</span>
                 <span className="num">
@@ -366,7 +366,7 @@ export function Feed() {
             ))}
             {visible.length === 0 && (
               <div className="empty">
-                nothing matches that — loosen a filter, or widen the window. the pad is quiet sometimes 🌵
+                nothing matches that. loosen a filter, or widen the window. the pad is quiet sometimes 🌵
               </div>
             )}
           </div>
@@ -382,8 +382,8 @@ export function Feed() {
       {rows.length === 0 && !busy && (
         <p className="muted">
           {scannedAt !== null
-            ? "no launches in that window — the pad is quiet right now. try a wider window (12 hours → 1 day → 7 days)."
-            : `Pick a window and hit scan. Launch events are read straight off Robinhood Chain Testnet (${CHAIN.rpc.replace("https://", "")}) — no indexer, no API key, nothing hidden.`}
+            ? "no launches in that window. the pad is quiet right now. try a wider window (12 hours, then 1 day, then 7 days)."
+            : `Pick a window and hit scan. Launch events are read straight off Robinhood Chain Testnet (${CHAIN.rpc.replace("https://", "")}): no indexer, no API key, nothing hidden.`}
         </p>
       )}
 

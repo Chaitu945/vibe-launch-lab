@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
  * A soft cursor trail: a small dot that tracks the pointer exactly and a ring that
  * lags behind it (lerped), growing over anything clickable.
  *
- * Deliberately NOT a replacement for the native cursor — hiding the real pointer is
+ * Deliberately NOT a replacement for the native cursor: hiding the real pointer is
  * a usability tax, and a lagging ring is the part that actually feels nice.
  *
  * Disabled for touch pointers and for `prefers-reduced-motion`, and it is pure

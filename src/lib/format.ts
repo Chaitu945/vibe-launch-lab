@@ -1,10 +1,10 @@
 export function short(a?: string | null, size = 4): string {
-  if (!a) return "—";
+  if (!a) return "-";
   return `${a.slice(0, 2 + size)}…${a.slice(-size)}`;
 }
 
 export function fmtEth(wei: bigint | null | undefined, dp = 4): string {
-  if (wei === null || wei === undefined) return "—";
+  if (wei === null || wei === undefined) return "-";
   const v = Number(wei) / 1e18;
   if (v === 0) return "0";
   if (Math.abs(v) < 0.0001) return toDecimals(v);
@@ -19,7 +19,7 @@ export function fmtEth(wei: bigint | null | undefined, dp = 4): string {
  * nothing in the UI silently switches notation.
  */
 export function toDecimals(v: number, sig = 4, maxDp = 18): string {
-  if (!Number.isFinite(v)) return "—";
+  if (!Number.isFinite(v)) return "-";
   if (v === 0) return "0";
   const abs = Math.abs(v);
   if (abs >= 1) return v.toFixed(Math.min(4, maxDp)).replace(/\.?0+$/, "");
@@ -32,7 +32,7 @@ export function toDecimals(v: number, sig = 4, maxDp = 18): string {
 
 /** Price in quote per token, from an 18dp wad. Shown in full decimals. */
 export function fmtPrice(wad: bigint | null | undefined): string {
-  if (wad === null || wad === undefined) return "—";
+  if (wad === null || wad === undefined) return "-";
   const v = Number(wad) / 1e18;
   if (v === 0) return "0";
   if (v >= 0.001) return v.toFixed(6).replace(/\.?0+$/, "");
@@ -40,7 +40,7 @@ export function fmtPrice(wad: bigint | null | undefined): string {
 }
 
 export function fmtTokens(tokens: bigint | null | undefined, dp = 2): string {
-  if (tokens === null || tokens === undefined) return "—";
+  if (tokens === null || tokens === undefined) return "-";
   const v = Number(tokens) / 1e18;
   if (v >= 1e6) return `${(v / 1e6).toFixed(dp)}M`;
   if (v >= 1e3) return `${(v / 1e3).toFixed(dp)}K`;
@@ -48,7 +48,7 @@ export function fmtTokens(tokens: bigint | null | undefined, dp = 2): string {
 }
 
 export function pct(bps: number | null | undefined, dp = 1): string {
-  if (bps === null || bps === undefined) return "—";
+  if (bps === null || bps === undefined) return "-";
   return `${(bps / 100).toFixed(dp)}%`;
 }
 

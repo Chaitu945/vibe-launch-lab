@@ -1,18 +1,18 @@
-# Launch Lab — vibe/vibe testnet analytics
+# Launch Lab: vibe/vibe testnet analytics
 
 An unofficial analytics and **bonding-curve simulator** for [vibe/vibe](https://testnet.vibevibe.fun) on **Robinhood Chain Testnet** (chain 46630).
 
-It is a client-side app: no backend, no API key, no indexer of its own. It reads launch logs straight off the public testnet RPC and renders them, and it lets a creator model a launch configuration — including what the curve does to their own opening buy — before committing it.
+It is a client-side app: no backend, no API key, no indexer of its own. It reads launch logs straight off the public testnet RPC and renders them, and it lets a creator model a launch configuration before committing it, including what the curve does to their own opening buy.
 
 > Not affiliated with, endorsed by, or built by vibe/vibe or Seedify. Testnet only. Testnet tokens have no monetary value.
 
 ## What it does
 
 **Live launches**
-- Scans the launch events of **four factory generations** — retired, legacy, current, and the new **V6** factory, which is *not* in the operator's published config list and emits its own undocumented launch event.
+- Scans the launch events of **four factory generations**: retired, legacy, current, and the new **V6** factory, which is *not* in the operator's published config list and emits its own undocumented launch event.
 - Window selector: **1 hour / 4 hours / 12 hours / 1 day / 3 days / 7 days / all** (since the first factory deployment). Windows are expressed in hours and converted at the measured block time, so the labels mean what they say.
 - Adaptive chunking: the public RPC enforces an undocumented 10,000-log cap and a query time limit, so the scanner halves its window on any RPC error and reports how often it had to.
-- Enriches each row with on-chain identity and curve state through Multicall3, for **both curve implementations** — the classic one and V6, whose surface is renamed (`pairPrincipal`, `targetPairUnits`, `sold`, `baseTaxBps`, `createdAt`).
+- Enriches each row with on-chain identity and curve state through Multicall3, for **both curve implementations**: the classic one and V6, whose surface is renamed (`pairPrincipal`, `targetPairUnits`, `sold`, `baseTaxBps`, `createdAt`).
 - Honest failure modes: a log that fails to *decode* is reported as a decode failure, never silently swallowed as an RPC limit or shown as data.
 - Also handles a quirk of this RPC: **the `topics` filter is ignored**, so every factory log is fetched and all discrimination happens client-side after the fetch.
 
@@ -96,7 +96,7 @@ The model check is the important one: if `quoteBuy` ever disagrees with this app
 - **No holder counts or per-token trade history.** `Transfer`/`Bought`/`Sold` logs are orders of magnitude denser than launches; a rate-limited public RPC cannot scan them per token.
 - **Not an archive node.** The public endpoint rejects state reads more than ~4,096 blocks back, so all reads are head-only. Curve state is "as of now", not "as of launch".
 - **IPFS metadata is best-effort.** Public gateways rate-limit aggressively (429s are routine), so images may fail to load. Names and symbols always come from the token contract and are unaffected.
-- **The Monte Carlo is a model, not a forecast.** It answers "given this buy distribution, how often does the curve fill?" — nothing about who actually shows up.
+- **The Monte Carlo is a model, not a forecast.** It answers "given this buy distribution, how often does the curve fill?" It says nothing about who actually shows up.
 
 ## Layout
 

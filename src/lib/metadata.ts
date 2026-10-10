@@ -55,14 +55,14 @@ function cacheSet(key: string, value: ProjectMetadata | null) {
   try {
     localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ at: Date.now(), value } satisfies CacheEntry));
   } catch {
-    /* storage full or blocked — enrichment is optional */
+    /* storage full or blocked: enrichment is optional */
   }
 }
 
 /**
  * Metadata is untrusted input: it is a JSON blob someone else wrote and uploaded
  * to IPFS. `image` in particular is published as a string by most projects, but
- * arrays and nested objects are common — and a non-string reaching a `.startsWith`
+ * arrays and nested objects are common, and a non-string reaching a `.startsWith`
  * call took this app's whole UI down once. So every field is coerced here, at the
  * boundary, and the components never have to defend themselves.
  */

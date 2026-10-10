@@ -47,7 +47,7 @@ export default function App() {
       <footer className="footer">
         <span>
           Not affiliated with vibe/vibe or Seedify. Testnet tokens are worthless. Model output is checked against the deployed
-          curve contracts — see “How it works”. Built by one person on a laptop, not a foundation.
+          curve contracts. See "How it works". Built by one person on a laptop, not a foundation.
         </span>
         <a href={CHAIN.app} target="_blank" rel="noreferrer noopener">
           launchpad ↗
