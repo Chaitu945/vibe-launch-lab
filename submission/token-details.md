@@ -11,7 +11,7 @@ books) are **immutable once created**, so review the review screen twice.
 | Ticker | `VLAB` (alternates: `LABL`, `CURVE`) |
 | Category | **Product & Utility** (it is a tool, not a meme) |
 | Image | `submission/logo-512.png` (upload; 1:1, dark background, >512px) |
-| Links | GitHub repo + live demo URL (both go on the project page, which is what "evidence it belongs to the submitting creator" means) |
+| Links | Live demo URL (the create form has no GitHub field, so the repo goes in the submission post instead) |
 
 ## Description (paste, trim if the field is short)
 

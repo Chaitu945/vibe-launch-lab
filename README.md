@@ -4,6 +4,10 @@ An unofficial analytics and **bonding-curve simulator** for [vibe/vibe](https://
 
 It is a client-side app: no backend, no API key, no indexer of its own. It reads launch logs straight off the public testnet RPC and renders them, and it lets a creator model a launch configuration before committing it, including what the curve does to their own opening buy.
 
+**Live:** https://vibe-launch-lab.vercel.app · **Code:** https://github.com/Chaitu945/vibe-launch-lab
+
+The launch this tool was built around is **Launch Lab (VLAB)**, `0x1277e53FDA036CD5C922F0409D97BCf6Cf193960`, launch #570 on the vibe/vibe testnet launchpad. That launcher's create form collects a website and a Telegram link but has **no GitHub field**, so the token's on-chain metadata points at the demo above and this repository is the code behind it. Same author, same project, both sides linked.
+
 > Not affiliated with, endorsed by, or built by vibe/vibe or Seedify. Testnet only. Testnet tokens have no monetary value.
 
 ## What it does

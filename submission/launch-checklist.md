@@ -59,8 +59,7 @@ After the transaction confirms, open the token page and verify it renders with y
 
 ## 5. Keep the evidence current
 
-- The launch must be on the **builder leaderboard** with the product attached, so the project page
-  should never point at a dead URL. If you redeploy, update the link on the token page.
+- The launch must be on the **builder leaderboard** with the product attached. The leaderboard renders whatever the token's metadata says, and **that metadata is immutable once created**. The launcher's create form collects a website and a Telegram link but has **no GitHub field** (checked in `V6Create`), so the repo cannot be attached there: put the repo URL in the submission post, and keep the website field pointing at the permanent demo URL. Use the production alias (`https://vibe-launch-lab.vercel.app`), never a per-deploy preview URL, because it is baked in at creation and cannot be corrected later.
 - Testnet activity is judged per track: this launch is a **vibecoded/product** submission (1.50%
   combined pool with RWA), not a trader submission. Trading on the launchpad is a *separate* track
   (1.75% user pool). If you want a piece of that too, it wants genuine PnL, not wash volume between

@@ -11,8 +11,8 @@
 > against the contract. spot price matches exactly, token output to 1 wei. if it ever disagreed with
 > the chain the app would say so instead of showing a confident wrong number
 >
-> live: <demo url>
-> code: <repo url>
+> live: https://vibe-launch-lab.vercel.app
+> code: https://github.com/Chaitu945/vibe-launch-lab
 > testnet only, nothing here is financial advice
 >
 > @vibevibefun
@@ -21,7 +21,7 @@ Alt hook (shorter, less technical):
 
 > vibe/vibe testnet has ~793.1M of the 800M curve sold by the time a launch graduates, and the price
 > runs 14.7x on the way there. built a tool that shows you that before you launch instead of after:
-> <demo url>
+> https://vibe-launch-lab.vercel.app
 
 ## Discord / Telegram (project showcase)
 
@@ -37,7 +37,7 @@ Alt hook (shorter, less technical):
 > • every token row has a **model vs contract** check: it calls the curve's own quoteBuy/spotPriceWad
 > and compares. spot exact, tokens to 1 wei
 >
-> Token: <token link> · Demo: <demo url> · Code: <repo url>
+> Token: `0x1277e53FDA036CD5C922F0409D97BCf6Cf193960` · Demo: https://vibe-launch-lab.vercel.app · Code: https://github.com/Chaitu945/vibe-launch-lab
 > Testnet only, not affiliated with vibe/vibe or Seedify, nothing here is financial advice.
 
 ## One-liner for the project page links
