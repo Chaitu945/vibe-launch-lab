@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { CHAIN } from "../lib/chain";
 import { fmtEth, fmtPrice, fmtPriceFull, fmtTokens, pct, short, agoFromUnix } from "../lib/format";
 import { verifyCurve, rowLaunchTimestamp, rowProgressBps, rowRaised, rowTarget, rowTaxBps, rowTokensSold, type LaunchRow, type VerificationResult } from "../lib/scan";
-import { sanitizeMetadata, type ProjectMetadata } from "../lib/metadata";
+import { sanitizeMetadata, socialHref, type ProjectMetadata } from "../lib/metadata";
 import { TokenAvatar } from "./TokenAvatar";
 
 interface Props {
@@ -67,12 +67,12 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
             </a>
           )}
           {meta?.twitter && (
-            <a href={meta.twitter} target="_blank" rel="noreferrer noopener">
+            <a href={socialHref(meta.twitter, "twitter")} target="_blank" rel="noreferrer noopener">
               x
             </a>
           )}
           {meta?.telegram && (
-            <a href={meta.telegram} target="_blank" rel="noreferrer noopener">
+            <a href={socialHref(meta.telegram, "telegram")} target="_blank" rel="noreferrer noopener">
               telegram
             </a>
           )}

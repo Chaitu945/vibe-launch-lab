@@ -128,17 +128,41 @@ export function sanitizeMetadata(raw: unknown): ProjectMetadata | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const properties = (r.properties && typeof r.properties === "object" ? (r.properties as Record<string, unknown>) : {}) ?? {};
+  /**
+   * The launcher nests links under `socials`, e.g.
+   *   { socials: { website: "https://...", twitter: "..." } }
+   * so reading only top-level `website`/`twitter` means a token created on this launchpad
+   * shows no links at all in the drawer. Unwrap it, then fall back to the flat keys.
+   */
+  const socials = (r.socials && typeof r.socials === "object" ? (r.socials as Record<string, unknown>) : {}) ?? {};
   return {
     name: asString(r.name) ?? asString(properties.name),
     symbol: asString(r.symbol) ?? asString(properties.symbol),
     description: asString(r.description) ?? asString(properties.description),
     image: pickImage(r.image, r.image_url, r.logo, r.imageUrl, properties.image),
-    twitter: asString(r.twitter) ?? asString(r.x) ?? asString(properties.twitter),
-    website: asString(r.website) ?? asString(r.external_url) ?? asString(properties.website),
-    telegram: asString(r.telegram) ?? asString(properties.telegram),
-    discord: asString(r.discord) ?? asString(properties.discord),
+    twitter:
+      asString(r.twitter) ?? asString(r.x) ?? asString(socials.twitter) ?? asString(socials.x) ?? asString(properties.twitter),
+    website:
+      asString(r.website) ??
+      asString(r.external_url) ??
+      asString(socials.website) ??
+      asString(socials.url) ??
+      asString(properties.website),
+    telegram: asString(r.telegram) ?? asString(socials.telegram) ?? asString(properties.telegram),
+    discord: asString(r.discord) ?? asString(socials.discord) ?? asString(properties.discord),
     raw,
   };
+}
+
+/** Normalize a profile value into a real link: "vibevibefun" and "@vibevibefun" are handles,
+ *  not paths, and a bare handle in an href resolves relative to our own site and 404s. */
+export function socialHref(value: unknown, kind: "twitter" | "telegram"): string | undefined {
+  const v = typeof value === "string" ? value.trim() : "";
+  if (!v) return undefined;
+  if (/^https?:\/\//i.test(v)) return v;
+  const handle = v.replace(/^@/, "").replace(/\s+/g, "");
+  if (!handle) return undefined;
+  return kind === "twitter" ? `https://x.com/${handle}` : `https://t.me/${handle}`;
 }
 
 export function cidOf(uri: unknown): string | null {

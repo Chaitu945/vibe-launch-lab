@@ -15,7 +15,7 @@ import { Simulator } from "../src/components/Simulator";
 import { About } from "../src/components/About";
 import { TokenDetail } from "../src/components/TokenDetail";
 import { TokenAvatar } from "../src/components/TokenAvatar";
-import { sanitizeMetadata, gatewayUrls, type ProjectMetadata } from "../src/lib/metadata";
+import { sanitizeMetadata, gatewayUrls, socialHref, type ProjectMetadata } from "../src/lib/metadata";
 import { ETH_PAIR, blocksForHours, EARLIEST_DEPLOYMENT_BLOCK } from "../src/lib/chain";
 import { fmtEth, fmtPrice, fmtPriceFull, fmtTiny } from "../src/lib/format";
 import { buy, freshState, projectLaunch, soldAtGraduation, type LaunchConfig } from "../src/lib/curve";
@@ -217,6 +217,31 @@ check(
   String(sanitizeMetadata(launcherImageShape)?.image),
 );
 check("an empty image object yields no image", sanitizeMetadata({ image: {} })?.image === undefined);
+
+// Regression: the launcher nests links under `socials`, so a token created here showed no
+// links in the drawer at all.
+const socialsShape = {
+  name: "Launch Lab",
+  socials: { website: "https://vibe-launch-lab.vercel.app/", twitter: "vibevibefun" },
+};
+check(
+  "sanitizeMetadata unwraps socials.website (the launcher's shape)",
+  sanitizeMetadata(socialsShape)?.website === "https://vibe-launch-lab.vercel.app/",
+  String(sanitizeMetadata(socialsShape)?.website),
+);
+check("sanitizeMetadata unwraps socials.twitter", sanitizeMetadata(socialsShape)?.twitter === "vibevibefun");
+check(
+  "a bare handle becomes a real link, not a relative path",
+  socialHref("vibevibefun", "twitter") === "https://x.com/vibevibefun" &&
+    socialHref("@some_team", "telegram") === "https://t.me/some_team" &&
+    socialHref("https://x.com/already", "twitter") === "https://x.com/already",
+  socialHref("vibevibefun", "twitter"),
+);
+check(
+  "a flat website still wins when both are present",
+  sanitizeMetadata({ website: "https://flat.example", socials: { website: "https://nested.example" } })?.website ===
+    "https://flat.example",
+);
 check(
   "the gateway chain puts a gateway that actually answers first",
   (gatewayUrls("ipfs://bafkreiabc")[0] ?? "").includes("gateway.pinata.cloud"),
