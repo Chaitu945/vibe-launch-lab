@@ -452,11 +452,30 @@ export function Feed() {
       )}
 
       {rows.length === 0 && !busy && (
-        <p className="muted">
-          {scannedAt !== null
-            ? "no launches in that window. the pad is quiet right now. try a wider window (12 hours, then 1 day, then 7 days)."
-            : `Pick a window and hit scan. Launch events are read straight off Robinhood Chain Testnet (${CHAIN.rpc.replace("https://", "")}): no indexer, no API key, nothing hidden.`}
-        </p>
+        <div className="panel start-here">
+          <h2>{scannedAt !== null ? "nothing in that window" : "start here"}</h2>
+          <p className="muted small" style={{ margin: 0 }}>
+            {scannedAt !== null
+              ? "the pad is quiet in this range. widen it: 12 hours, then 1 day, then 7 days."
+              : `Launch events are read straight off Robinhood Chain Testnet (${CHAIN.rpc.replace("https://", "")}): no indexer, no API key, nothing hidden. pick a window above and hit scan.`}
+          </p>
+          {scannedAt === null && (
+            <div className="start-points">
+              <div className="start-point">
+                <b>every generation</b>
+                <span>all four factory generations, including the undocumented one that new launches come from</span>
+              </div>
+              <div className="start-point">
+                <b>checked, not guessed</b>
+                <span>each row's price is compared against the curve contract itself, exact to the wei</span>
+              </div>
+              <div className="start-point">
+                <b>simulate before you commit</b>
+                <span>see what an opening buy does to your own launch, before you spend it</span>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {selected && <TokenDetail row={selected} metadata={meta[selected.curve]} onClose={() => setSelected(null)} />}
