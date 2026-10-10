@@ -84,7 +84,22 @@ check("launch table fills from live chain data", gotRows && rowCount > 0, `${row
 
 const firstRowText = dom.window.document.querySelector(".tr.clickable")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
 check("rows carry a name, symbol and numbers", /\S/.test(firstRowText) && /\d/.test(firstRowText), firstRowText.slice(0, 90));
-check("stats panel appeared", text().includes("launches found") && text().includes("raised (enriched)"));
+check("stats panel appeared", text().includes("launches found") && text().includes("raised across those"));
+check(
+  "the legend explains the compact notation",
+  text().includes("reading the numbers") && text().includes("0.₈1464"),
+);
+check(
+  "no exponent notation anywhere on the feed",
+  !/e[+-]\d/.test(text()),
+  (text().match(/[0-9.]+e[+-]\d+/) ?? ["none"])[0],
+);
+check(
+  "tiny prices render compact, not as a wall of zeros",
+  Array.from(dom.window.document.querySelectorAll(".tr.clickable .num")).some(
+    (el) => /[\u2080-\u2089]/.test(el.textContent ?? "") && !/0\.0{6,}/.test(el.textContent ?? ""),
+  ),
+);
 check("activity strip rendered", dom.window.document.querySelectorAll(".strip-bar").length > 0);
 
 // Motion layer: mounted, decorative, and cannot swallow clicks.
@@ -137,6 +152,12 @@ simTab?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
 const simOk = await waitFor(() => text().includes("Launch configuration") && text().includes("Will it graduate?"), 5_000, "simulator tab");
 check("simulator tab renders", simOk);
 check("simulator produced projections", /\d+\.\dx/.test(text()) && text().includes("tokens you get for the opening buy"));
+check("simulator states the result in plain words", text().includes("In plain words"));
+check(
+  "chart axis labels avoid exponents",
+  !/e[+-]\d/.test(text()) && dom.window.document.querySelectorAll(".chart .axis-label").length > 0,
+  `${dom.window.document.querySelectorAll(".chart .axis-label").length} axis labels`,
+);
 check("buy ladder table rendered", dom.window.document.querySelectorAll(".ladder .tr").length > 5);
 check("config score rendered", /Config score/.test(text()) && /Graduation reachability/.test(text()));
 

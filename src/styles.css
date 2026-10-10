@@ -950,6 +950,17 @@ button.ghost:hover {
   background: #0c1a11;
 }
 
+/* the "reading the numbers" explainer under the table */
+.legend {
+  max-width: 92ch;
+  line-height: 1.6;
+  margin: 10px 0 0;
+}
+
+.legend b {
+  color: var(--text);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tr.clickable,
   .stats.pop,

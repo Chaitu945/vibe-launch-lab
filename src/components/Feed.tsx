@@ -3,7 +3,7 @@ import type React from "react";
 import { BLOCK_SECONDS, blocksForHours, CHAIN, EARLIEST_DEPLOYMENT_BLOCK } from "../lib/chain";
 import { activityBuckets, enrichLaunches, rowLaunchTimestamp, rowProgressBps, rowRaised, scanLaunches, type LaunchRow, type RawLaunch, type ScanProgress } from "../lib/scan";
 import { fetchMetadata, mapLimit, type ProjectMetadata } from "../lib/metadata";
-import { agoFromUnix, duration, fmtEth, fmtInt, fmtPrice, pct, short } from "../lib/format";
+import { agoFromUnix, duration, fmtEth, fmtInt, fmtPrice, fmtPriceFull, pct, short } from "../lib/format";
 import { TokenAvatar } from "./TokenAvatar";
 import { ActivityStrip } from "./ActivityStrip";
 import { TokenDetail } from "./TokenDetail";
@@ -257,25 +257,25 @@ export function Feed() {
               <span>launches found</span>
               <b>{fmtInt(raw.length)}</b>
             </div>
-            <div className="stat">
-              <span>enriched</span>
+            <div className="stat" title="Rows whose curve and token contract were actually read on-chain. The rest show dashes until you load more.">
+              <span>with live numbers</span>
               <b>{fmtInt(stats.total)}</b>
             </div>
-            <div className="stat">
+            <div className="stat" title="Of the rows read so far, how many are still on a curve vs already graduated.">
               <span>on curve / graduated</span>
               <b>
                 {stats.active} / {stats.graduated}
               </b>
             </div>
-            <div className="stat">
-              <span>raised (enriched)</span>
+            <div className="stat" title="ETH collected across the curves read so far. Read from each curve contract, not estimated.">
+              <span>raised across those</span>
               <b>{fmtEth(stats.raised, 3)} ETH</b>
             </div>
-            <div className="stat">
+            <div className="stat" title="Total ETH creators spent buying their own token at launch.">
               <span>creator opening buys</span>
               <b>{fmtEth(stats.initial, 3)} ETH</b>
             </div>
-            <div className="stat">
+            <div className="stat" title="Mean progress to graduation (raised ÷ target) across the rows read.">
               <span>avg progress</span>
               <b>{pct(stats.avgProgress === null ? null : Math.round(stats.avgProgress))}</b>
             </div>
@@ -315,15 +315,25 @@ export function Feed() {
 
           <div className="table">
             <div className="tr th">
-              <span>project</span>
-              <span>gen</span>
-              <span>age</span>
-              <span className="num">opening buy</span>
-              <span className="num">raised</span>
-              <span className="num">progress</span>
-              <span className="num">price</span>
-              <span className="num">FDV</span>
-              <span>creator</span>
+              <span title="Name and symbol are read from the token contract; the logo comes from IPFS metadata.">project</span>
+              <span title="Which factory generation emitted this launch.">gen</span>
+              <span title="How long ago the launch transaction happened.">age</span>
+              <span className="num" title="ETH the creator spent buying their own token at launch.">
+                opening buy
+              </span>
+              <span className="num" title="ETH collected on the curve so far, read from the curve contract.">
+                raised
+              </span>
+              <span className="num" title="raised divided by the ETH target needed to graduate.">
+                progress
+              </span>
+              <span className="num" title="Quote per token, read from the curve. Hover a price for the exact decimal.">
+                price
+              </span>
+              <span className="num" title="price x the 1,000,000,000 token supply.">
+                FDV
+              </span>
+              <span title="The wallet that launched it.">creator</span>
             </div>
             {visible.map((r, i) => (
               <button
@@ -359,8 +369,8 @@ export function Feed() {
                     {pct(rowProgressBps(r), 0)}
                   </span>
                 </span>
-                <span className="num">{fmtPrice(r.spotPriceWad)}</span>
-                <span className="num">{fmtEth(r.fdvWei, 2)}</span>
+                <span className="num" title={`exact: ${fmtPriceFull(r.spotPriceWad)}`}>{fmtPrice(r.spotPriceWad)}</span>
+                <span className="num" title={`exact: ${fmtEth(r.fdvWei, 6)} ETH`}>{fmtEth(r.fdvWei, 2)}</span>
                 <span className="muted small mono">{short(r.creator)}</span>
               </button>
             ))}
@@ -370,6 +380,13 @@ export function Feed() {
               </div>
             )}
           </div>
+
+          <p className="muted small legend">
+            reading the numbers: <b>0.₈1464</b> means 0.000000001464. The small subscript counts the zeros after the decimal
+            point, which beats both a wall of zeros and an exponent. Hover any number for its exact value. <b>raised</b> is ETH
+            collected on the curve, <b>progress</b> is raised ÷ target, <b>FDV</b> is price × the 1B supply, and <b>stock pair</b>{" "}
+            means the token trades against a stock token instead of ETH.
+          </p>
 
           {rows.length < raw.length && (
             <button className="primary" onClick={loadMore} disabled={busy}>

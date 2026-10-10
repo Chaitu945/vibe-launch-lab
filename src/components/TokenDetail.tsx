@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { CHAIN } from "../lib/chain";
-import { fmtEth, fmtPrice, fmtTokens, pct, short, agoFromUnix } from "../lib/format";
+import { fmtEth, fmtPrice, fmtPriceFull, fmtTokens, pct, short, agoFromUnix } from "../lib/format";
 import { verifyCurve, rowLaunchTimestamp, rowProgressBps, rowRaised, rowTarget, rowTaxBps, rowTokensSold, type LaunchRow, type VerificationResult } from "../lib/scan";
 import { sanitizeMetadata, type ProjectMetadata } from "../lib/metadata";
 import { TokenAvatar } from "./TokenAvatar";
@@ -94,7 +94,7 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
         </div>
         <div>
           <span>{row.priceSource === "quote" ? "Price (from quote)" : "Spot price"}</span>
-          <b>{fmtPrice(row.spotPriceWad)} ETH</b>
+          <b title={`exact: ${fmtPriceFull(row.spotPriceWad)} ETH`}>{fmtPrice(row.spotPriceWad)} ETH</b>
         </div>
         <div>
           <span>FDV</span>
@@ -201,6 +201,13 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
                   <b>{check.ok ? "model reproduces the contract" : "MISMATCH: do not trust simulator"}</b>
                 </div>
               </div>
+            )}
+            {check && (
+              <p className={`small ${check.ok ? "muted" : "error"}`}>
+                {check.ok
+                  ? "In plain words: the tool's curve math matches what this contract does right now, so the simulator's numbers for this launch can be trusted."
+                  : "In plain words: the tool and the contract disagree here, so treat this launch's simulated numbers as wrong until that disagreement is understood."}
+              </p>
             )}
           </>
         )}

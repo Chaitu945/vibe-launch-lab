@@ -17,7 +17,7 @@ import { TokenDetail } from "../src/components/TokenDetail";
 import { TokenAvatar } from "../src/components/TokenAvatar";
 import { sanitizeMetadata, type ProjectMetadata } from "../src/lib/metadata";
 import { ETH_PAIR, blocksForHours, EARLIEST_DEPLOYMENT_BLOCK } from "../src/lib/chain";
-import { fmtEth, fmtPrice } from "../src/lib/format";
+import { fmtEth, fmtPrice, fmtPriceFull, fmtTiny } from "../src/lib/format";
 import { buy, freshState, projectLaunch, soldAtGraduation, type LaunchConfig } from "../src/lib/curve";
 
 let failures = 0;
@@ -136,13 +136,57 @@ check(
   `${feeRatio.toFixed(5)}x (integer division loses a few wei)`,
 );
 
-// ---------- 3. number formatting: decimals, never engineering notation ----------
-check("price 1.464e-9 renders as decimals", fmtPrice(1_464_000_000n) === "0.000000001464", fmtPrice(1_464_000_000n));
-check("price 1.6445e-9 rounds to 4 significant digits", fmtPrice(1_644_542_990n) === "0.000000001645", fmtPrice(1_644_542_990n));
+// ---------- 3. number formatting: compact for tiny, never engineering notation ----------
+check("tiny price uses the compact form", fmtPrice(1_464_000_000n) === "0.\u20881464", fmtPrice(1_464_000_000n));
+check(
+  "compact form keeps 4 significant digits",
+  fmtPrice(1_644_542_990n) === "0.\u20881645",
+  fmtPrice(1_644_542_990n),
+);
+check("exact 1e-9 has EIGHT zeros, not nine", fmtTiny(1e-9) === "0.\u20881", fmtTiny(1e-9));
+check("the floor itself stays a readable decimal", fmtTiny(1e-6) === "0.000001", fmtTiny(1e-6));
+check("just below the floor switches to compact", fmtTiny(9.9e-7) === "0.\u208699", fmtTiny(9.9e-7));
+check("two-digit zero counts render", fmtTiny(1e-18) === "0.\u2081\u20871", fmtTiny(1e-18));
 check("price 2.7 renders as a plain decimal", fmtPrice(2_700_000_000_000_000_000n) === "2.7", fmtPrice(2_700_000_000_000_000_000n));
-check("small ETH amounts render as decimals", fmtEth(46_800_000_000_000n) === "0.0000468", fmtEth(46_800_000_000_000n));
+check("readable ETH amounts stay decimal", fmtEth(46_800_000_000_000n) === "0.0000468", fmtEth(46_800_000_000_000n));
 check("ordinary ETH amounts keep their grouping", fmtEth(513_000_000_000_000_000n) === "0.513", fmtEth(513_000_000_000_000_000n));
-check("no output anywhere contains an exponent", ![fmtPrice(1_464_000_000n), fmtPrice(1_644_542_990n), fmtEth(46_800_000_000_000n), fmtEth(1n), fmtEth(10n ** 9n)].some((s) => s.includes("e-") || s.includes("e+")));
+check(
+  "the exact decimal is still available for tooltips",
+  fmtPriceFull(1_464_000_000n) === "0.000000001464",
+  fmtPriceFull(1_464_000_000n),
+);
+check(
+  "no output anywhere contains an exponent",
+  ![fmtPrice(1_464_000_000n), fmtPrice(1_644_542_990n), fmtEth(46_800_000_000_000n), fmtEth(1n), fmtEth(10n ** 9n), fmtTiny(3e-15)].some(
+    (s) => s.includes("e-") || s.includes("e+"),
+  ),
+);
+
+// The notation has to be self-consistent: expanding the compact form must land back on
+// the number it came from. This is what stops a subscript off-by-one from shipping.
+const SUB_TO_DIGIT: Record<string, string> = {
+  "\u2080": "0", "\u2081": "1", "\u2082": "2", "\u2083": "3", "\u2084": "4",
+  "\u2085": "5", "\u2086": "6", "\u2087": "7", "\u2088": "8", "\u2089": "9",
+};
+function expandCompact(s: string): number {
+  const rest = s.slice(2); // drop the leading "0."
+  let zeros = "";
+  let i = 0;
+  while (i < rest.length && rest[i] in SUB_TO_DIGIT) {
+    zeros += SUB_TO_DIGIT[rest[i]];
+    i += 1;
+  }
+  const digits = rest.slice(i);
+  return Number(digits) * Math.pow(10, -(Number(zeros) + digits.length));
+}
+for (const v of [1.464e-9, 1e-9, 1e-6, 3e-15, 9.99e-7, 4.2e-11]) {
+  const roundTrip = expandCompact(fmtTiny(v));
+  check(
+    `compact round-trips ${v.toExponential(2)}`,
+    Math.abs(roundTrip - v) / v < 0.001,
+    `${fmtTiny(v)} -> ${roundTrip.toExponential(4)}`,
+  );
+}
 
 // ---------- 4. hostile metadata must never crash a render ----------
 // Regression: an IPFS metadata document whose `image` is an array (not a string)

@@ -1,3 +1,5 @@
+import { fmtTiny } from "../lib/format";
+
 interface Props {
   points: { raised: number; price: number }[];
   /** Optional marker: the net graduation target, in ETH. */
@@ -23,7 +25,7 @@ export function PriceCurveChart({ points, target, height = 200 }: Props) {
         <g key={f}>
           <line x1={pad.l} x2={width - pad.r} y1={sy(maxP * f)} y2={sy(maxP * f)} className="grid" />
           <text x={pad.l - 8} y={sy(maxP * f) + 4} className="axis-label" textAnchor="end">
-            {(maxP * f).toExponential(1)}
+            {fmtTiny(maxP * f, 2)}
           </text>
         </g>
       ))}

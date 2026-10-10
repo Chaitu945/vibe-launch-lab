@@ -186,28 +186,35 @@ export function Simulator() {
         )}
       </div>
 
+      <p className="muted small">
+        In plain words: with this config the price starts at <b>{fmtPrice(projection.priceAtLaunch)} ETH</b> per token and ends at{" "}
+        <b>{fmtPrice(projection.priceAtGraduation)} ETH</b> once the curve is full, so anyone buying at launch is up{" "}
+        <b>{projection.multiple.toFixed(1)}x</b> by then. Filling the curve still takes{" "}
+        <b>{fmtEth(grad.grossNeeded, 3)} ETH</b> of buying from other people.
+      </p>
+
       <div className="stats">
-        <div className="stat">
+        <div className="stat" title="Price per token when your opening buy lands.">
           <span>price at launch</span>
           <b>{fmtPrice(projection.priceAtLaunch)} ETH</b>
         </div>
-        <div className="stat">
+        <div className="stat" title="Price per token once the curve has sold its 800M allocation.">
           <span>price at graduation</span>
           <b>{fmtPrice(projection.priceAtGraduation)} ETH</b>
         </div>
-        <div className="stat">
+        <div className="stat" title="Price at graduation divided by price at launch.">
           <span>buyer upside</span>
           <b>{projection.multiple.toFixed(1)}x</b>
         </div>
-        <div className="stat">
+        <div className="stat" title="Tokens your opening buy gets you, after the buy's own price impact.">
           <span>tokens you get for the opening buy</span>
           <b>{fmtTokens(projection.tokensAtLaunchBuy)}</b>
         </div>
-        <div className="stat">
+        <div className="stat" title="Your opening buy as a share of the ETH needed to graduate.">
           <span>opening buy vs target</span>
           <b>{projection.initialBuyPctOfTarget.toFixed(2)}%</b>
         </div>
-        <div className="stat">
+        <div className="stat" title="How much more buying fills the curve.">
           <span>ETH still needed to graduate</span>
           <b>{fmtEth(grad.grossNeeded, 3)}</b>
         </div>
