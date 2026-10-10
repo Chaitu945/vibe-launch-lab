@@ -35,6 +35,11 @@ export const CHAIN = {
 /** ~0.15s per block measured on chain — used for time estimates in the UI. */
 export const BLOCK_SECONDS = 0.15;
 
+/** Blocks for a given number of hours at the measured block time. */
+export function blocksForHours(hours: number): number {
+  return Math.round((hours * 3600) / BLOCK_SECONDS);
+}
+
 export type Generation = "retired" | "legacy" | "current" | "v6";
 
 export interface FactoryInfo {
@@ -107,6 +112,9 @@ export const FACTORIES: FactoryInfo[] = [
 export const FACTORY_BY_ADDRESS = new Map<string, FactoryInfo>(
   FACTORIES.map((f) => [f.address.toLowerCase(), f]),
 );
+
+/** Earliest factory deployment — the floor for a scan of "everything". */
+export const EARLIEST_DEPLOYMENT_BLOCK = Math.min(...FACTORIES.map((f) => f.deploymentBlock));
 
 export function generationOf(address: string): FactoryInfo | null {
   return FACTORY_BY_ADDRESS.get(address.toLowerCase()) ?? null;

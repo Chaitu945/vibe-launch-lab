@@ -72,7 +72,10 @@ scanBtn!.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
 const sawProgress = await waitFor(() => text().includes("scanning logs") || text().includes("reading state") || text().includes("resolving"), 10_000, "scan progress");
 check("scan kicks off and reports progress", sawProgress, text().slice(0, 120).replace(/\s+/g, " "));
 
-const gotRows = await waitFor(() => dom.window.document.querySelectorAll(".tr.clickable").length > 0, 120_000, "table rows");
+const gotRows = await waitFor(() => dom.window.document.querySelectorAll(".tr.clickable").length > 0, 240_000, "table rows");
+if (dom.window.document.querySelectorAll(".tr.clickable").length === 0) {
+  console.log(`      body text at timeout: ${text().replace(/\s+/g, " ").slice(0, 400)}`);
+}
 const rowCount = dom.window.document.querySelectorAll(".tr.clickable").length;
 check("launch table fills from live chain data", gotRows && rowCount > 0, `${rowCount} rows rendered`);
 

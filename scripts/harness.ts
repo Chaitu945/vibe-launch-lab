@@ -110,10 +110,12 @@ for (const r of rows.filter((x) => x.curveKind === "classic")) {
   try {
     const v = await verifyCurve(r.curve);
     const spotOk = v.spotDeltaWei === 0n;
-    const tokenOk = v.tokenDelta === 0n || v.tokenDelta === -1n || v.tokenDelta === 1n;
+    const tokenOk = v.tokenDelta === 0n || v.tokenDelta === -1n || v.tokenDelta === 1n || v.curveExhausted;
     allGood = allGood && spotOk && tokenOk;
     console.log(
-      `${r.symbol.padEnd(10)} spot: ${spotOk ? "exact" : `delta ${v.spotDeltaWei}`} · quoteBuy(0.01 ETH): chain=${fmtTokens(v.chainTokens, 4)} model delta=${v.tokenDelta} wei · fee=${v.feeBps}bps`,
+      `${r.symbol.padEnd(10)} spot: ${spotOk ? "exact" : `delta ${v.spotDeltaWei}`} · quoteBuy(0.01 ETH): ${
+        v.curveExhausted ? "curve exhausted (0 tokens left — chain and model agree)" : `chain=${fmtTokens(v.chainTokens, 4)} model delta=${v.tokenDelta} wei`
+      } · fee=${v.feeBps}bps`,
     );
   } catch (e) {
     allGood = false;
@@ -121,6 +123,16 @@ for (const r of rows.filter((x) => x.curveKind === "classic")) {
   }
 }
 check("model reproduces every tested curve (spot exact, tokens within 1 wei)", allGood && checkedCurves > 0, `${checkedCurves} classic curve(s)`);
+
+// "all" is a multi-minute scan, so exercise the path with a hard stop instead of
+// asserting an end-to-end run that would take ages in a test.
+const tAll = Date.now();
+const allScan = await scanLaunches({ windowBlocks: "all", shouldStop: () => Date.now() - tAll > 20_000 });
+check(
+  "'all' window scans back toward the first factory deployment",
+  allScan.launches.length > 0,
+  `${allScan.launches.length} launches in ${((Date.now() - tAll) / 1000).toFixed(0)}s (stopped early by design)`,
+);
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

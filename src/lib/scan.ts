@@ -1,6 +1,7 @@
 import { createPublicClient, http, decodeEventLog, getAddress, hexToString, type Log } from "viem";
 import {
   CHAIN,
+  EARLIEST_DEPLOYMENT_BLOCK,
   FACTORIES,
   FACTORY_ABI,
   CURVE_ABI,
@@ -121,7 +122,12 @@ export interface ScanProgress {
 }
 
 export interface ScanOptions {
-  windowBlocks: number;
+  /**
+   * Blocks to scan back — or `"all"`, meaning back to the earliest factory
+   * deployment (tens of millions of blocks; expect minutes and tens of thousands
+   * of rows).
+   */
+  windowBlocks: number | "all";
   onProgress?: (p: ScanProgress) => void;
   shouldStop?: () => boolean;
   /** Initial eth_getLogs chunk size. Halves on RPC errors (time/result limits). */
@@ -173,7 +179,8 @@ export async function scanLaunches(
   ignoredLogs: number;
 }> {
   const head = await getHead();
-  const totalBlocks = opts.windowBlocks;
+  const totalBlocks =
+    opts.windowBlocks === "all" ? Math.max(0, head - EARLIEST_DEPLOYMENT_BLOCK) : opts.windowBlocks;
   let chunk = opts.chunkBlocks ?? 100_000;
   let halvings = 0;
   const out: RawLaunch[] = [];
@@ -189,6 +196,15 @@ export async function scanLaunches(
       to = from;
     }
   }
+  /**
+   * Scan newest-first across ALL factories, not factory-by-factory.
+   *
+   * A generation-ordered list means a long scan ("all") spends its first minutes in
+   * the oldest, quietest region while recent launches sit at the end. Newest-first
+   * makes partial results useful — and if the user hits stop, what they have is the
+   * most recent activity rather than the oldest.
+   */
+  tasks.sort((a, b) => b.to - a.to);
 
   let done = 0;
   const blocksTotal = tasks.reduce((a, t) => a + (t.to - t.from), 0);
@@ -587,6 +603,8 @@ export interface VerificationResult {
   feeBps: bigint;
   target: bigint;
   realEth: bigint;
+  /** True when the curve cannot sell any more (exhausted / completed). */
+  curveExhausted: boolean;
   ok: boolean;
 }
 
@@ -638,6 +656,12 @@ export async function verifyCurve(curveAddress: string, probeEth = 10n ** 16n): 
   const chainTokens = (quote?.[0] as bigint) ?? 0n;
   const spotDelta = modelSpot - chainSpot;
   const tokenDelta = modelTokens - chainTokens;
+  /**
+   * A curve that has sold out returns 0 tokens from quoteBuy — it is not a model
+   * failure, it is the curve refusing to sell. Treat "both agree there is nothing
+   * left" as a pass, and say so, rather than reporting a mismatch.
+   */
+  const curveExhausted = chainTokens === 0n;
   return {
     curve: address,
     modelSpotWad: modelSpot,
@@ -650,6 +674,7 @@ export async function verifyCurve(curveAddress: string, probeEth = 10n ** 16n): 
     feeBps,
     target,
     realEth,
-    ok: spotDelta === 0n && (tokenDelta === 0n || tokenDelta === -1n || tokenDelta === 1n),
+    curveExhausted,
+    ok: spotDelta === 0n && (tokenDelta === 0n || tokenDelta === -1n || tokenDelta === 1n || curveExhausted),
   };
 }

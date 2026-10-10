@@ -191,7 +191,9 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
                 <div className="row">
                   <span>0.01 ETH buy → tokens</span>
                   <b>
-                    {check.tokenDelta.toString()} wei ({fmtTokens(check.chainTokens, 1)} from chain)
+                    {check.curveExhausted
+                      ? "curve exhausted — 0 tokens left to sell"
+                      : `${check.tokenDelta.toString()} wei (${fmtTokens(check.chainTokens, 1)} from chain)`}
                   </b>
                 </div>
                 <div className={`row verdict ${check.ok ? "ok" : "bad"}`}>

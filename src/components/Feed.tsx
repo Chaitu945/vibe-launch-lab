@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { BLOCK_SECONDS, CHAIN } from "../lib/chain";
+import { BLOCK_SECONDS, blocksForHours, CHAIN, EARLIEST_DEPLOYMENT_BLOCK } from "../lib/chain";
 import { activityBuckets, enrichLaunches, rowLaunchTimestamp, rowProgressBps, rowRaised, scanLaunches, type LaunchRow, type RawLaunch, type ScanProgress } from "../lib/scan";
 import { fetchMetadata, mapLimit, type ProjectMetadata } from "../lib/metadata";
 import { agoFromUnix, duration, fmtEth, fmtInt, fmtPrice, pct, short } from "../lib/format";
@@ -10,17 +10,29 @@ import { TokenDetail } from "./TokenDetail";
 const BLOCKS_PER_HOUR = Math.round(3600 / BLOCK_SECONDS);
 const PAGE = 24;
 
-const WINDOWS = [
-  { label: "~1 hour", blocks: 25_000 },
-  { label: "~4 hours", blocks: 100_000 },
-  { label: "~17 hours", blocks: 400_000 },
-  { label: "~3 days", blocks: 1_750_000 },
+/**
+ * Windows are expressed in HOURS and converted at the measured block time, so the
+ * labels mean what they say. (They used to be round block counts labelled after
+ * the fact — which is why there was a stray "~17 hours".)
+ */
+const WINDOWS: { label: string; hours: number | null }[] = [
+  { label: "1 hour", hours: 1 },
+  { label: "4 hours", hours: 4 },
+  { label: "12 hours", hours: 12 },
+  { label: "1 day", hours: 24 },
+  { label: "3 days", hours: 72 },
+  { label: "7 days", hours: 168 },
+  { label: "all (since the first factory)", hours: null },
 ];
+
+const windowBlocksFor = (hours: number | null): number | "all" =>
+  hours === null ? "all" : blocksForHours(hours);
 
 type SortKey = "newest" | "progress" | "raised" | "fdv" | "initialBuy";
 
 export function Feed() {
-  const [windowBlocks, setWindowBlocks] = useState(400_000);
+  const [windowHours, setWindowHours] = useState<number | null>(24);
+  const [blocksScanned, setBlocksScanned] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
@@ -63,10 +75,13 @@ export function Feed() {
     setStage("scanning logs");
     try {
       const res = await scanLaunches({
-        windowBlocks,
+        windowBlocks: windowBlocksFor(windowHours),
         onProgress: (p) => setProgress(p),
         shouldStop: () => stopRef.current,
       });
+      setBlocksScanned(
+        windowHours === null ? Math.max(0, res.head - EARLIEST_DEPLOYMENT_BLOCK) : blocksForHours(windowHours),
+      );
       setHead(res.head);
       setRaw(res.launches);
       setDecodeWarn(
@@ -88,7 +103,7 @@ export function Feed() {
       setBusy(false);
       setProgress(null);
     }
-  }, [windowBlocks, loadMetadata]);
+  }, [windowHours, loadMetadata]);
 
   const loadMore = useCallback(async () => {
     const already = rows.length;
@@ -120,9 +135,9 @@ export function Feed() {
 
   const buckets = useMemo(() => {
     if (head === null) return [];
-    const hours = Math.min(48, Math.max(6, Math.round(windowBlocks / BLOCKS_PER_HOUR)));
+    const hours = Math.min(48, Math.max(6, Math.round((blocksScanned ?? BLOCKS_PER_HOUR) / BLOCKS_PER_HOUR)));
     return activityBuckets(raw, head, hours, BLOCKS_PER_HOUR);
-  }, [raw, head, windowBlocks]);
+  }, [raw, head, blocksScanned]);
 
   const visible = useMemo(() => {
     let list = rows;
@@ -164,9 +179,13 @@ export function Feed() {
       <div className="controls">
         <label>
           window
-          <select value={windowBlocks} onChange={(e) => setWindowBlocks(Number(e.target.value))} disabled={busy}>
+          <select
+            value={windowHours === null ? "all" : String(windowHours)}
+            onChange={(e) => setWindowHours(e.target.value === "all" ? null : Number(e.target.value))}
+            disabled={busy}
+          >
             {WINDOWS.map((w) => (
-              <option key={w.blocks} value={w.blocks}>
+              <option key={w.label} value={w.hours === null ? "all" : String(w.hours)}>
                 {w.label}
               </option>
             ))}
@@ -187,6 +206,15 @@ export function Feed() {
           </div>
         )}
       </div>
+
+      {windowHours === null && (
+        <p className="muted small">
+          “all” scans back to the first factory deployment
+          {head ? ` — about ${fmtInt(Math.round((head - EARLIEST_DEPLOYMENT_BLOCK) / 1000))}k blocks from here` : ""}. Expect
+          minutes of RPC calls and tens of thousands of launches; rows are enriched 24 at a time and the activity strip only
+          charts the most recent 48 hours.
+        </p>
+      )}
 
       {stage && (
         <div className="progress">

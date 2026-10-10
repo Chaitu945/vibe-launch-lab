@@ -16,7 +16,7 @@ import { About } from "../src/components/About";
 import { TokenDetail } from "../src/components/TokenDetail";
 import { TokenAvatar } from "../src/components/TokenAvatar";
 import { sanitizeMetadata, type ProjectMetadata } from "../src/lib/metadata";
-import { ETH_PAIR } from "../src/lib/chain";
+import { ETH_PAIR, blocksForHours, EARLIEST_DEPLOYMENT_BLOCK } from "../src/lib/chain";
 import { fmtEth, fmtPrice } from "../src/lib/format";
 import { buy, freshState, projectLaunch, soldAtGraduation, type LaunchConfig } from "../src/lib/curve";
 
@@ -185,6 +185,16 @@ try {
   detailThrew = String(e).slice(0, 120);
 }
 check("TokenDetail survives hostile metadata fields", detailThrew === "", detailThrew);
+
+// ---------- 5. window presets mean what they say ----------
+check("1 hour converts at the measured block time", blocksForHours(1) === 24_000, `${blocksForHours(1)} blocks`);
+check("1 day is 24× the hourly window", blocksForHours(24) === 576_000, `${blocksForHours(24)} blocks`);
+check("7 days is 168× the hourly window", blocksForHours(168) === 4_032_000, `${blocksForHours(168)} blocks`);
+check(
+  "the earliest factory deployment is the 'all' floor",
+  EARLIEST_DEPLOYMENT_BLOCK === 95_916_239,
+  String(EARLIEST_DEPLOYMENT_BLOCK),
+);
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

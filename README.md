@@ -10,10 +10,11 @@ It is a client-side app: no backend, no API key, no indexer of its own. It reads
 
 **Live launches**
 - Scans the launch events of **four factory generations** — retired, legacy, current, and the new **V6** factory, which is *not* in the operator's published config list and emits its own undocumented launch event.
-- Window selector from ~1 hour to ~3 days, with adaptive chunking: the public RPC enforces an undocumented 10,000-log cap and a query time limit, so the scanner halves its window on any RPC error and reports how often it had to.
+- Window selector: **1 hour / 4 hours / 12 hours / 1 day / 3 days / 7 days / all** (since the first factory deployment). Windows are expressed in hours and converted at the measured block time, so the labels mean what they say.
+- Adaptive chunking: the public RPC enforces an undocumented 10,000-log cap and a query time limit, so the scanner halves its window on any RPC error and reports how often it had to.
 - Enriches each row with on-chain identity and curve state through Multicall3, for **both curve implementations** — the classic one and V6, whose surface is renamed (`pairPrincipal`, `targetPairUnits`, `sold`, `baseTaxBps`, `createdAt`).
 - Honest failure modes: a log that fails to *decode* is reported as a decode failure, never silently swallowed as an RPC limit or shown as data.
-- Also handles a quirk of this RPC: **`topics[1]`+ filters are ignored**, so all discrimination (which generation, which event layout) happens client-side after the fetch.
+- Also handles a quirk of this RPC: **the `topics` filter is ignored**, so every factory log is fetched and all discrimination happens client-side after the fetch.
 
 **Launch simulator**
 - Presets built from constants read off deployed curves (gen3 ETH pair, gen1, and the SPCX stock pair).
