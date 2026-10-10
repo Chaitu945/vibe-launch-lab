@@ -4,6 +4,7 @@ import { Simulator } from "./components/Simulator";
 import { About } from "./components/About";
 import { SmoothCursor } from "./components/SmoothCursor";
 import { CHAIN } from "./lib/chain";
+import { REPO_URL, TOKEN_EXPLORER_URL } from "./lib/project";
 
 type Tab = "feed" | "sim" | "about";
 
@@ -49,9 +50,17 @@ export default function App() {
           Not affiliated with vibe/vibe or Seedify. Testnet tokens are worthless. Model output is checked against the deployed
           curve contracts. See "How it works". Built by one person on a laptop, not a foundation.
         </span>
-        <a href={CHAIN.app} target="_blank" rel="noreferrer noopener">
-          launchpad ↗
-        </a>
+        <span className="footer-links">
+          <a href={REPO_URL} target="_blank" rel="noreferrer noopener">
+            source code ↗
+          </a>
+          <a href={TOKEN_EXPLORER_URL} target="_blank" rel="noreferrer noopener">
+            this project's token ↗
+          </a>
+          <a href={CHAIN.app} target="_blank" rel="noreferrer noopener">
+            launchpad ↗
+          </a>
+        </span>
       </footer>
     </div>
   );

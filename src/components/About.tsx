@@ -1,4 +1,5 @@
 import { CANONICAL_PAIR, CHAIN, ETH_PAIR, FACTORIES, STOCK_QUOTE } from "../lib/chain";
+import { REPO_URL, TOKEN_ADDRESS, TOKEN_EXPLORER_URL } from "../lib/project";
 import { fmtEth, short } from "../lib/format";
 
 export function About() {
@@ -184,6 +185,29 @@ export function About() {
           Everything here concerns Robinhood Chain <b>Testnet</b>. Test ETH and testnet tokens have no monetary value. This is
           not financial advice. Do not send mainnet assets to this network.
         </p>
+      </section>
+
+      <section className="panel">
+        <h2>This project</h2>
+        <p className="muted small">
+          Built and deployed by one person, in the open. The token below was launched through this launchpad with this app
+          linked as its website, so the chain of custody is walkable end to end: on-chain metadata, then this site, then the
+          source.
+        </p>
+        <ul className="plain">
+          <li>
+            <a href={REPO_URL} target="_blank" rel="noreferrer noopener">
+              source code ↗
+            </a>{" "}
+            <span className="muted small">(public repository, this is the demo in it)</span>
+          </li>
+          <li>
+            <a href={TOKEN_EXPLORER_URL} target="_blank" rel="noreferrer noopener">
+              this project's token ↗
+            </a>{" "}
+            <span className="muted small mono">{TOKEN_ADDRESS}</span>
+          </li>
+        </ul>
       </section>
     </div>
   );
