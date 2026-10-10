@@ -176,6 +176,15 @@ check(
   !dom.window.document.documentElement.classList.contains("drawer-open"),
 );
 
+// ---- and a mouse-only way back: click anywhere outside the panel ----
+const rowAgain = dom.window.document.querySelector(".tr.clickable") as HTMLElement | null;
+rowAgain?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+const reopened = await waitFor(() => dom.window.document.querySelector(".detail") !== null, 5_000, "drawer reopen");
+const scrim = dom.window.document.querySelector(".detail-scrim") as HTMLElement | null;
+scrim?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+const closedByScrim = await waitFor(() => dom.window.document.querySelector(".detail") === null, 5_000, "scrim close");
+check("clicking outside closes the panel (mouse-only escape hatch)", reopened && Boolean(scrim) && closedByScrim);
+
 // ---- simulator tab ----
 const simTab = Array.from(dom.window.document.querySelectorAll("button")).find((b) => b.textContent === "Launch simulator");
 simTab?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));

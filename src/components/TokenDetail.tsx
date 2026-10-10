@@ -70,7 +70,15 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
    */
   const meta = useMemo(() => (metadata ? sanitizeMetadata((metadata as { raw?: unknown }).raw ?? metadata) : null), [metadata]);
   return (
-    <aside className="detail" ref={asideRef} role="dialog" aria-label={`${row.name} details`}>
+    <>
+      {/*
+        Click outside to close. A panel that covers the page should always have a way back,
+        and that has to work with the mouse alone, not just Escape. This is also why the bug
+        below was so bad: with the page locked and the panel stranded off-screen, there was
+        no reachable control at all.
+      */}
+      <div className="detail-scrim" onClick={onClose} aria-hidden="true" />
+      <aside className="detail" ref={asideRef} role="dialog" aria-label={`${row.name} details`}>
       <div className="detail-head">
         <TokenAvatar name={row.name} imageUri={meta?.image} size={44} />
         <div>
@@ -243,6 +251,7 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
           </>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

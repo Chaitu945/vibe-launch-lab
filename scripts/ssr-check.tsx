@@ -302,6 +302,19 @@ check(
 );
 check("the page is locked while the drawer is open", /html\.drawer-open[^{]*\{[^}]*overflow:\s*hidden/.test(css));
 check("the drawer paints above the feed", /\.detail\s*\{[^}]*z-index:\s*\d+/.test(css));
+check("the drawer is fixed to the viewport", /\.detail\s*\{[^}]*position:\s*fixed/.test(css));
+check(
+  "there is a click-outside escape hatch",
+  /\.detail-scrim\s*\{[^}]*position:\s*fixed/.test(css) && /z-index:\s*\d+/.test(css),
+);
+// The regression that stranded the drawer: a retained transform on `main > *` made
+// position: fixed resolve against the feed, so the panel opened above the viewport.
+const tabInBlock = css.match(/@keyframes tabIn\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+check(
+  "the tab transition keeps no transform (a retained one breaks position: fixed)",
+  tabInBlock !== "" && !/transform/.test(tabInBlock),
+  tabInBlock.replace(/\s+/g, " ").slice(0, 90),
+);
 check(
   "rows can still lift on hover (entrance animation must not own transform forever)",
   /\.tr\.clickable\s*\{[^}]*animation:[^;]*backwards/.test(css),

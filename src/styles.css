@@ -613,6 +613,14 @@ html.drawer-open body {
   overflow: hidden;
 }
 
+/* click-outside escape hatch; sits just under the panel (z-index 60) */
+.detail-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  background: rgba(4, 5, 6, 0.45);
+}
+
 .detail-head {
   display: flex;
   gap: 12px;
@@ -1004,13 +1012,20 @@ button.ghost:hover {
 @keyframes tabIn {
   from {
     opacity: 0;
-    transform: translateY(5px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
+
+/*
+ * Opacity only, deliberately. This rule applies to `main > *` for the lifetime of the page
+ * (fill-mode `both`), and a retained `transform` on an ancestor makes `position: fixed`
+ * descendants resolve against that ancestor instead of the viewport. With a translateY here,
+ * the token drawer opened at the top of the feed rather than the top of the screen, so
+ * scrolling down and opening a token left it stranded above the viewport with the page
+ * locked: unreachable. Never add a transform to this animation.
+ */
 
 /* a soft aurora behind everything: z-index -1 keeps it under the content and above
    the page background, no layout impact */
