@@ -119,6 +119,8 @@ export interface ScanProgress {
   doneBlocks: number;
   totalBlocks: number;
   launches: number;
+  /** Roughly how long is left, from the blocks completed so far. */
+  etaSeconds?: number | null;
 }
 
 export interface ScanOptions {
@@ -132,6 +134,32 @@ export interface ScanOptions {
   shouldStop?: () => boolean;
   /** Initial eth_getLogs chunk size. Halves on RPC errors (time/result limits). */
   chunkBlocks?: number;
+  /**
+   * Concurrent eth_getLogs requests. One at a time makes wall time a function of chunk
+   * count (7 days is ~160 chunks, "all" is ~765), so a small pool is the single biggest
+   * speed win. Kept modest because the endpoint is public and shared.
+   */
+  concurrency?: number;
+  /**
+   * Stop after this many launches. Scans are newest-first, so a cap keeps the most
+   * recent activity rather than truncating arbitrarily; the result reports `truncated`.
+   */
+  maxLaunches?: number;
+}
+
+/** Rough remaining seconds, extrapolated from the blocks completed so far. */
+export function etaSeconds(startedAt: number, doneBlocks: number, totalBlocks: number): number | null {
+  if (doneBlocks <= 0 || totalBlocks <= 0) return null;
+  const elapsed = (Date.now() - startedAt) / 1000;
+  const remaining = (elapsed / doneBlocks) * (totalBlocks - doneBlocks);
+  return Number.isFinite(remaining) && remaining > 0 ? Math.round(remaining) : null;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** A throttle is not a size problem, and halving on it makes the throttling worse. */
+function isRateLimit(err: unknown): boolean {
+  return /429|rate limit|too many requests|rate exceeded|over rate/i.test(String(err));
 }
 
 /**
@@ -174,9 +202,12 @@ export async function scanLaunches(
   head: number;
   chunks: number;
   halvings: number;
+  rateLimitRetries: number;
   decodeFailures: number;
   firstDecodeError: string | null;
   ignoredLogs: number;
+  /** True when the scan stopped at `maxLaunches` instead of finishing the window. */
+  truncated: boolean;
 }> {
   const head = await getHead();
   const totalBlocks =
@@ -208,77 +239,129 @@ export async function scanLaunches(
 
   let done = 0;
   const blocksTotal = tasks.reduce((a, t) => a + (t.to - t.from), 0);
-  let i = 0;
+  let cursor = 0;
   let decodeFailures = 0;
   let firstDecodeError: string | null = null;
-  while (i < tasks.length) {
-    if (opts.shouldStop?.()) break;
-    const t = tasks[i];
-    let logs: Log[];
-    try {
-      // No topics filter: this RPC ignores it, so requesting a specific event just
-      // returns the same set. Classification happens in classifyLog().
-      logs = await rawGetLogs({
-        address: getAddress(t.factory.address),
-        fromBlock: BigInt(t.from),
-        toBlock: BigInt(t.to),
-      });
-    } catch (err) {
-      // Only RPC-side failures land here (time limits, result caps, transport).
-      const half = Math.floor(chunk / 2);
-      if (half >= 2_000) {
-        chunk = half;
-        halvings++;
-        // Re-split this task into two smaller halves and retry.
-        const mid = t.to - half;
-        tasks.splice(i, 1, { factory: t.factory, from: mid, to: t.to }, { factory: t.factory, from: t.from, to: mid });
-        opts.onProgress?.({ label: `RPC limit hit, halving window to ${half.toLocaleString()} blocks`, doneBlocks: done, totalBlocks: blocksTotal, launches: out.length });
-        continue;
-      }
-      // Give up on this slice rather than aborting the whole scan.
-      i++;
-      continue;
-    }
-
-    // Decoding is separated from the RPC call on purpose: a decode failure is a
-    // bug in this app's ABI, NOT an RPC limit, and must never be silently
-    // swallowed by the halving path.
-    for (const log of logs) {
-      let classified: ReturnType<typeof classifyLog>;
-      try {
-        classified = classifyLog(log, t.factory);
-      } catch (err) {
-        // A malformed log must never abort the scan.
-        decodeFailures++;
-        if (firstDecodeError === null) firstDecodeError = `classify threw: ${String(err).split("\n")[0].slice(0, 160)}`;
-        continue;
-      }
-      const { record, kind } = classified;
-      if (kind === "other") {
-        ignoredLogs++;
-        continue;
-      }
-      if (kind === "malformed" || !record) {
-        decodeFailures++;
-        if (firstDecodeError === null) {
-          firstDecodeError = `topic0 ${log.topics[0]} did not match the expected launch-event layout`;
-        }
-        continue;
-      }
-      out.push(record);
-    }
-    done += t.to - t.from;
+  let rateLimitRetries = 0;
+  const seen = new Set<string>();
+  const startedAt = Date.now();
+  const maxLaunches = opts.maxLaunches ?? 30_000;
+  const concurrency = Math.max(1, Math.min(opts.concurrency ?? 6, 12));
+  const hitCap = () => out.length >= maxLaunches;
+  const progress = (label: string) =>
     opts.onProgress?.({
-      label: `${t.factory.label} ${t.from.toLocaleString()}-${t.to.toLocaleString()}`,
+      label,
       doneBlocks: done,
       totalBlocks: blocksTotal,
       launches: out.length,
+      etaSeconds: etaSeconds(startedAt, done, blocksTotal),
     });
-    i++;
-  }
+
+  /**
+   * Requests run in a small pool rather than one at a time.
+   *
+   * Measured on this endpoint, one eth_getLogs costs about 0.4s of round trip, so serial
+   * scanning makes wall time a function of chunk count: a 7-day window is ~160 chunks
+   * (~60s) and "all" is ~765 chunks (~5 minutes). That is the whole reason long windows
+   * felt slow. Six in flight cuts it roughly 6x. Workers claim slices by index, so no
+   * slice is scanned twice and no worker idles on another's latency.
+   */
+  const worker = async () => {
+    for (;;) {
+      if (opts.shouldStop?.() || hitCap()) return;
+      const index = cursor++;
+      if (index >= tasks.length) return;
+      const t = tasks[index];
+      let logs: Log[] | null = null;
+      let attempt = 0;
+      while (logs === null) {
+        try {
+          // No topics filter: this RPC ignores it, so requesting a specific event just
+          // returns the same set. Classification happens in classifyLog().
+          logs = await rawGetLogs({
+            address: getAddress(t.factory.address),
+            fromBlock: BigInt(t.from),
+            toBlock: BigInt(t.to),
+          });
+        } catch (err) {
+          // A throttle is not a size problem: retrying the same slice is right, halving it
+          // would multiply the request count and make the throttling worse.
+          if (isRateLimit(err) && attempt < 3) {
+            attempt += 1;
+            rateLimitRetries += 1;
+            await sleep(300 * attempt * attempt);
+            continue;
+          }
+          // Only RPC-side failures land here (time limits, result caps, transport).
+          const half = Math.floor(chunk / 2);
+          if (half >= 2_000) {
+            chunk = half;
+            halvings++;
+            const mid = t.to - half;
+            // The failed slice is already consumed by the cursor, so its halves are
+            // appended rather than spliced in: index claiming has to stay stable while
+            // other workers are mid-flight.
+            tasks.push({ factory: t.factory, from: t.from, to: mid }, { factory: t.factory, from: mid, to: t.to });
+            progress(`RPC limit hit, halving window to ${half.toLocaleString()} blocks`);
+          }
+          break; // logs stays null: this slice was requeued smaller, or given up on
+        }
+      }
+      if (logs === null) continue;
+
+      // Decoding is separated from the RPC call on purpose: a decode failure is a
+      // bug in this app's ABI, NOT an RPC limit, and must never be silently
+      // swallowed by the halving path.
+      for (const log of logs) {
+        // Stop as soon as the cap is reached rather than finishing the slice, so a cap of
+        // N lands near N instead of N plus whatever the workers already had in flight.
+        if (hitCap()) break;
+        // Belt and braces against an overlapping requeue: never report one log twice.
+        const key = `${log.transactionHash ?? ""}:${log.logIndex ?? 0}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        let classified: ReturnType<typeof classifyLog>;
+        try {
+          classified = classifyLog(log, t.factory);
+        } catch (err) {
+          // A malformed log must never abort the scan.
+          decodeFailures++;
+          if (firstDecodeError === null) firstDecodeError = `classify threw: ${String(err).split("\n")[0].slice(0, 160)}`;
+          continue;
+        }
+        const { record, kind } = classified;
+        if (kind === "other") {
+          ignoredLogs++;
+          continue;
+        }
+        if (kind === "malformed" || !record) {
+          decodeFailures++;
+          if (firstDecodeError === null) {
+            firstDecodeError = `topic0 ${log.topics[0]} did not match the expected launch-event layout`;
+          }
+          continue;
+        }
+        out.push(record);
+      }
+      done += t.to - t.from;
+      progress(`${t.factory.label} ${t.from.toLocaleString()}-${t.to.toLocaleString()}`);
+    }
+  };
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
   out.sort((a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex);
-  return { launches: out, head, chunks: tasks.length, halvings, decodeFailures, firstDecodeError, ignoredLogs };
+  return {
+    launches: out,
+    head,
+    chunks: tasks.length,
+    halvings,
+    rateLimitRetries,
+    decodeFailures,
+    firstDecodeError,
+    ignoredLogs,
+    truncated: hitCap(),
+  };
 }
 
 function baseRecord(log: Log, factory: FactoryInfo) {
@@ -598,6 +681,11 @@ export interface VerificationResult {
   spotDeltaWei: bigint;
   buyProbeEth: bigint;
   modelTokens: bigint;
+  /** The formula's raw output, before the curve's remaining-allocation cap. */
+  modelTokensUncapped: bigint;
+  /** True when the contract's remaining allocation is what limited the quote. */
+  cappedByRemaining: boolean;
+  tokensRemaining: bigint | null;
   chainTokens: bigint;
   tokenDelta: bigint;
   feeBps: bigint;
@@ -624,6 +712,7 @@ export async function verifyCurve(curveAddress: string, probeEth = 10n ** 16n): 
       { address, abi: CURVE_ABI, functionName: "TOTAL_FEE_BPS" },
       { address, abi: CURVE_ABI, functionName: "NET_GRADUATION_TARGET" },
       { address, abi: CURVE_ABI, functionName: "quoteBuy", args: [probeEth] },
+      { address, abi: CURVE_ABI, functionName: "curveTokensRemaining" },
     ],
     allowFailure: true,
     multicallAddress: getAddress(CHAIN.multicall3),
@@ -639,6 +728,7 @@ export async function verifyCurve(curveAddress: string, probeEth = 10n ** 16n): 
   const feeBps = (pick(4) as bigint) ?? 0n;
   const target = (pick(5) as bigint) ?? 0n;
   const quote = pick(6) as readonly bigint[] | null;
+  const remaining = pick(7) as bigint | null;
 
   const state: CurveState = {
     virtualEth,
@@ -652,7 +742,15 @@ export async function verifyCurve(curveAddress: string, probeEth = 10n ** 16n): 
   const modelSpot = priceWad(state);
   const k = virtualEth * virtualToken;
   const fee = (probeEth * feeBps) / 10_000n;
-  const modelTokens = virtualToken - k / (virtualEth + (probeEth - fee));
+  /**
+   * The constant-product formula describes the curve while it still has tokens to sell.
+   * Once the remaining allocation is smaller than the formula's output, the contract caps
+   * at what is left, so an uncapped model reports more tokens than the curve can deliver.
+   * Read the contract's own `curveTokensRemaining()` and apply the same cap.
+   */
+  const modelTokensUncapped = virtualToken - k / (virtualEth + (probeEth - fee));
+  const capped = remaining !== null && remaining > 0n && remaining < modelTokensUncapped;
+  const modelTokens = capped ? remaining! : modelTokensUncapped;
   const chainTokens = (quote?.[0] as bigint) ?? 0n;
   const spotDelta = modelSpot - chainSpot;
   const tokenDelta = modelTokens - chainTokens;
@@ -669,6 +767,9 @@ export async function verifyCurve(curveAddress: string, probeEth = 10n ** 16n): 
     spotDeltaWei: spotDelta,
     buyProbeEth: probeEth,
     modelTokens,
+    modelTokensUncapped,
+    cappedByRemaining: capped,
+    tokensRemaining: remaining,
     chainTokens,
     tokenDelta,
     feeBps,

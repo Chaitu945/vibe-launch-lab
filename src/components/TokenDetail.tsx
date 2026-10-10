@@ -193,7 +193,9 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
                   <b>
                     {check.curveExhausted
                       ? "curve exhausted: 0 tokens left to sell"
-                      : `${check.tokenDelta.toString()} wei (${fmtTokens(check.chainTokens, 1)} from chain)`}
+                      : `${check.tokenDelta.toString()} wei (${fmtTokens(check.chainTokens, 1)} from chain${
+                          check.cappedByRemaining ? ", capped at the curve's remaining allocation" : ""
+                        })`}
                   </b>
                 </div>
                 <div className={`row verdict ${check.ok ? "ok" : "bad"}`}>

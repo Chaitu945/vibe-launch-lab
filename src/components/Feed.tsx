@@ -49,6 +49,7 @@ export function Feed() {
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [decodeWarn, setDecodeWarn] = useState<string | null>(null);
+  const [capWarn, setCapWarn] = useState<string | null>(null);
   const [ignored, setIgnored] = useState(0);
   const [head, setHead] = useState<number | null>(null);
   const [raw, setRaw] = useState<RawLaunch[]>([]);
@@ -99,6 +100,11 @@ export function Feed() {
         res.decodeFailures > 0 ? `${res.decodeFailures} log(s) failed to decode: ${res.firstDecodeError ?? "unknown error"}` : null,
       );
       setIgnored(res.ignoredLogs);
+      setCapWarn(
+        res.truncated
+          ? `stopped after ${fmtInt(res.launches.length)} launches, keeping the newest. A window this wide has more history than the page should hold, so narrow it for full coverage.`
+          : null,
+      );
       setStage(`found ${fmtInt(res.launches.length)} launches: reading their curves…`);
       const page = res.launches.slice(0, PAGE);
       const enriched = await enrichLaunches(page, { onProgress: () => undefined, shouldStop: () => stopRef.current });
@@ -233,6 +239,8 @@ export function Feed() {
           <div className="progress-label">
             {stage}
             {progress ? ` · ${progress.label}` : ""}
+            {progress ? ` · ${fmtInt(progress.doneBlocks)} of ${fmtInt(progress.totalBlocks)} blocks` : ""}
+            {progress?.etaSeconds ? ` · about ${duration(progress.etaSeconds)} left` : ""}
           </div>
           {progress && (
             <div className="bar">
@@ -242,6 +250,7 @@ export function Feed() {
         </div>
       )}
       {error && <p className="error">RPC error: {error}</p>}
+      {capWarn && <p className="error">{capWarn}</p>}
       {decodeWarn && <p className="error">decode warning: {decodeWarn}</p>}
       {!decodeWarn && ignored > 0 && (
         <p className="muted small">

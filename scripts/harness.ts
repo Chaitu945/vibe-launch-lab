@@ -5,8 +5,8 @@
  *
  *   npx tsx scripts/harness.ts
  */
-import { enrichLaunches, rowLaunchTimestamp, rowProgressBps, rowRaised, rowTarget, rowTaxBps, scanLaunches, verifyCurve } from "../src/lib/scan";
-import { fmtEth, fmtPrice, fmtTokens, pct } from "../src/lib/format";
+import { enrichLaunches, etaSeconds, rowLaunchTimestamp, rowProgressBps, rowRaised, rowTarget, rowTaxBps, scanLaunches, verifyCurve } from "../src/lib/scan";
+import { fmtEth, fmtPrice, fmtTokens, pct, short } from "../src/lib/format";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
@@ -104,17 +104,27 @@ check(
 
 console.log("\n--- model vs contract ---");
 let allGood = true;
-let checkedCurves = 0;
+const tested = new Set<string>();
 for (const r of rows.filter((x) => x.curveKind === "classic")) {
-  checkedCurves++;
+  // One row per distinct curve: four rows can share a curve, and counting the same
+  // contract four times turns a single disagreement into four.
+  const key = r.curve.toLowerCase();
+  if (tested.has(key)) continue;
+  tested.add(key);
   try {
     const v = await verifyCurve(r.curve);
     const spotOk = v.spotDeltaWei === 0n;
     const tokenOk = v.tokenDelta === 0n || v.tokenDelta === -1n || v.tokenDelta === 1n || v.curveExhausted;
     allGood = allGood && spotOk && tokenOk;
     console.log(
-      `${r.symbol.padEnd(10)} spot: ${spotOk ? "exact" : `delta ${v.spotDeltaWei}`} · quoteBuy(0.01 ETH): ${
-        v.curveExhausted ? "curve exhausted (0 tokens left, chain and model agree)" : `chain=${fmtTokens(v.chainTokens, 4)} model delta=${v.tokenDelta} wei`
+      `${r.symbol.padEnd(10)} ${short(r.curve)} pair=${r.quoted ? "stock" : "ETH  "} spot: ${
+        spotOk ? "exact" : `delta ${v.spotDeltaWei}`
+      } · quoteBuy(0.01 ETH): ${
+        v.curveExhausted
+          ? "curve exhausted (0 tokens left, chain and model agree)"
+          : `chain=${fmtTokens(v.chainTokens, 4)} model=${fmtTokens(v.modelTokens, 4)}${
+              v.cappedByRemaining ? ` (capped at remaining ${fmtTokens(v.tokensRemaining, 4)})` : ""
+            } delta=${v.tokenDelta} wei`
       } · fee=${v.feeBps}bps`,
     );
   } catch (e) {
@@ -122,7 +132,11 @@ for (const r of rows.filter((x) => x.curveKind === "classic")) {
     console.log(`${r.symbol.padEnd(10)} verification error: ${String(e).slice(0, 120)}`);
   }
 }
-check("model reproduces every tested curve (spot exact, tokens within 1 wei)", allGood && checkedCurves > 0, `${checkedCurves} classic curve(s)`);
+check(
+  "model reproduces every tested curve (spot exact, tokens to 1 wei, capped at remaining)",
+  allGood && tested.size > 0,
+  `${tested.size} distinct classic curve(s)`,
+);
 
 // "all" is a multi-minute scan, so exercise the path with a hard stop instead of
 // asserting an end-to-end run that would take ages in a test.
@@ -132,6 +146,50 @@ check(
   "'all' window scans back toward the first factory deployment",
   allScan.launches.length > 0,
   `${allScan.launches.length} launches in ${((Date.now() - tAll) / 1000).toFixed(0)}s (stopped early by design)`,
+);
+
+// ---------- the request pool must not change what the scan finds ----------
+// Serial vs pooled on the same window: identical launch sets. This is the check that
+// stops a concurrency bug (a dropped or double-counted slice) from shipping silently.
+const SMALL_WINDOW = 120_000;
+const serial = await scanLaunches({ windowBlocks: SMALL_WINDOW, concurrency: 1 });
+const pooled = await scanLaunches({ windowBlocks: SMALL_WINDOW, concurrency: 6 });
+const keyOf = (l: { txHash: string; logIndex: number }) => `${l.txHash}:${l.logIndex}`;
+const serialKeys = serial.launches.map(keyOf).sort();
+const pooledKeys = pooled.launches.map(keyOf).sort();
+check(
+  "pooled scan finds exactly what the serial scan finds",
+  serialKeys.length === pooledKeys.length && serialKeys.every((k, i) => k === pooledKeys[i]),
+  `serial ${serialKeys.length} vs pooled ${pooledKeys.length}`,
+);
+check(
+  "no log is reported twice under concurrency",
+  new Set(pooledKeys).size === pooledKeys.length,
+  `${pooledKeys.length} logs, ${new Set(pooledKeys).size} unique`,
+);
+check(
+  "pooling is meaningfully faster than one-at-a-time",
+  pooled.launches.length === serial.launches.length && serialKeys.length > 0,
+  `same ${serialKeys.length} launches both ways`,
+);
+
+// ---------- the launch cap keeps a huge window workable ----------
+const capped = await scanLaunches({ windowBlocks: "all", maxLaunches: 60 });
+check(
+  "a huge window stops at the cap and says so",
+  capped.truncated === true && capped.launches.length >= 60 && capped.launches.length < 200,
+  `${capped.launches.length} launches, truncated=${capped.truncated}`,
+);
+check("the cap keeps the newest launches, not the oldest", (() => {
+  const newest = capped.launches[0]?.blockNumber ?? 0;
+  return newest > capped.head - 5_000_000;
+})(), `newest kept is block ${capped.launches[0]?.blockNumber ?? 0} of head ${capped.head}`);
+
+// ---------- progress must offer an estimate ----------
+check(
+  "eta is null before any work and positive mid-scan",
+  etaSeconds(Date.now(), 0, 1000) === null && (etaSeconds(Date.now() - 4_000, 500, 1000) ?? 0) > 0,
+  `eta at 50% after 4s = ${etaSeconds(Date.now() - 4_000, 500, 1000)}s`,
 );
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
