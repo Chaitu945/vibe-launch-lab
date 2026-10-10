@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Feed } from "./components/Feed";
 import { Simulator } from "./components/Simulator";
 import { About } from "./components/About";
+import { SmoothCursor } from "./components/SmoothCursor";
 import { CHAIN } from "./lib/chain";
 
 type Tab = "feed" | "sim" | "about";
@@ -10,6 +11,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("feed");
   return (
     <div className="app">
+      <SmoothCursor />
       <header className="masthead">
         <div className="brand">
           <span className="logo">L</span>
@@ -45,7 +47,7 @@ export default function App() {
       <footer className="footer">
         <span>
           Not affiliated with vibe/vibe or Seedify. Testnet tokens are worthless. Model output is checked against the deployed
-          curve contracts — see “How it works”.
+          curve contracts — see “How it works”. Built by one person on a laptop, not a foundation.
         </span>
         <a href={CHAIN.app} target="_blank" rel="noreferrer noopener">
           launchpad ↗

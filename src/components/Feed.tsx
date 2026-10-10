@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import type React from "react";
 import { BLOCK_SECONDS, blocksForHours, CHAIN, EARLIEST_DEPLOYMENT_BLOCK } from "../lib/chain";
 import { activityBuckets, enrichLaunches, rowLaunchTimestamp, rowProgressBps, rowRaised, scanLaunches, type LaunchRow, type RawLaunch, type ScanProgress } from "../lib/scan";
 import { fetchMetadata, mapLimit, type ProjectMetadata } from "../lib/metadata";
@@ -30,9 +31,19 @@ const windowBlocksFor = (hours: number | null): number | "all" =>
 
 type SortKey = "newest" | "progress" | "raised" | "fdv" | "initialBuy";
 
+/** Progress tags: decoration on top of a real number, never a substitute for it. */
+function rowTag(r: LaunchRow) {
+  if (r.graduated) return <span className="tag done">graduated</span>;
+  const p = rowProgressBps(r);
+  if (p !== null && p >= 9000) return <span className="tag hot">🔥 nearly graduating</span>;
+  if (p !== null && p >= 5000) return <span className="tag">halfway</span>;
+  return null;
+}
+
 export function Feed() {
   const [windowHours, setWindowHours] = useState<number | null>(24);
   const [blocksScanned, setBlocksScanned] = useState<number | null>(null);
+  const [justScanned, setJustScanned] = useState(false);
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string | null>(null);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
@@ -72,7 +83,7 @@ export function Feed() {
     setRaw([]);
     setMeta({});
     setSelected(null);
-    setStage("scanning logs");
+    setStage("sniffing factory logs");
     try {
       const res = await scanLaunches({
         windowBlocks: windowBlocksFor(windowHours),
@@ -88,14 +99,15 @@ export function Feed() {
         res.decodeFailures > 0 ? `${res.decodeFailures} log(s) failed to decode: ${res.firstDecodeError ?? "unknown error"}` : null,
       );
       setIgnored(res.ignoredLogs);
-      setStage(`found ${fmtInt(res.launches.length)} launches — reading state`);
+      setStage(`found ${fmtInt(res.launches.length)} launches — reading their curves…`);
       const page = res.launches.slice(0, PAGE);
       const enriched = await enrichLaunches(page, { onProgress: () => undefined, shouldStop: () => stopRef.current });
       setRows(enriched);
       setScannedAt(Date.now());
-      setStage("resolving IPFS metadata");
+      setStage("asking IPFS for logos and blurbs…");
       await loadMetadata(enriched);
       setStage(null);
+      setJustScanned(true);
     } catch (e) {
       setError(String(e).slice(0, 300));
       setStage(null);
@@ -240,7 +252,7 @@ export function Feed() {
 
       {rows.length > 0 && (
         <>
-          <div className="stats">
+          <div className={"stats" + (justScanned ? " pop" : "")} key={scannedAt ?? 0}>
             <div className="stat">
               <span>launches found</span>
               <b>{fmtInt(raw.length)}</b>
@@ -313,12 +325,20 @@ export function Feed() {
               <span className="num">FDV</span>
               <span>creator</span>
             </div>
-            {visible.map((r) => (
-              <button className="tr clickable" key={`${r.curve}-${r.launchId}`} onClick={() => setSelected(r)}>
+            {visible.map((r, i) => (
+              <button
+                className="tr clickable"
+                key={`${r.curve}-${r.launchId}`}
+                style={{ "--i": Math.min(i, 24) } as React.CSSProperties}
+                onClick={() => setSelected(r)}
+              >
                 <span className="project">
                   <TokenAvatar name={r.name} imageUri={meta[r.curve]?.image} />
                   <span className="names">
-                    <b>{r.name}</b>
+                    <b>
+                      {r.name}
+                      {rowTag(r)}
+                    </b>
                     <small>
                       {r.symbol}
                       {r.quoted ? " · stock pair" : ""}
@@ -344,7 +364,11 @@ export function Feed() {
                 <span className="muted small mono">{short(r.creator)}</span>
               </button>
             ))}
-            {visible.length === 0 && <div className="empty">nothing matches these filters</div>}
+            {visible.length === 0 && (
+              <div className="empty">
+                nothing matches that — loosen a filter, or widen the window. the pad is quiet sometimes 🌵
+              </div>
+            )}
           </div>
 
           {rows.length < raw.length && (
@@ -357,8 +381,9 @@ export function Feed() {
 
       {rows.length === 0 && !busy && (
         <p className="muted">
-          Pick a window and scan. Launches come off Robinhood Chain Testnet logs directly ({CHAIN.rpc.replace("https://", "")}) — no
-          indexer, no API key.
+          {scannedAt !== null
+            ? "no launches in that window — the pad is quiet right now. try a wider window (12 hours → 1 day → 7 days)."
+            : `Pick a window and hit scan. Launch events are read straight off Robinhood Chain Testnet (${CHAIN.rpc.replace("https://", "")}) — no indexer, no API key, nothing hidden.`}
         </p>
       )}
 

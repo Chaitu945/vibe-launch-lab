@@ -26,8 +26,7 @@ expose("window", dom.window);
 expose("document", dom.window.document);
 expose("navigator", dom.window.navigator);
 expose("localStorage", dom.window.localStorage);
-for (const name of ["HTMLElement", "HTMLInputElement", "Element", "Node", "Event", "MouseEvent", "AbortController"]) {
-  if (name === "AbortController") continue; // Node's own is fine for fetch
+for (const name of ["HTMLElement", "HTMLInputElement", "Element", "Node", "Event", "MouseEvent", "requestAnimationFrame", "cancelAnimationFrame", "matchMedia", "PointerEvent"]) {
   expose(name, (dom.window as unknown as Record<string, unknown>)[name]);
 }
 expose("getComputedStyle", dom.window.getComputedStyle.bind(dom.window));
@@ -69,7 +68,11 @@ const scanBtn = buttons.find((b) => (b.textContent ?? "").toLowerCase().includes
 check("scan button exists and is clickable", Boolean(scanBtn) && !scanBtn!.hasAttribute("disabled"));
 scanBtn!.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
 
-const sawProgress = await waitFor(() => text().includes("scanning logs") || text().includes("reading state") || text().includes("resolving"), 10_000, "scan progress");
+const sawProgress = await waitFor(
+  () => ["sniffing factory logs", "reading their curves", "asking IPFS"].some((s) => text().includes(s)),
+  10_000,
+  "scan progress",
+);
 check("scan kicks off and reports progress", sawProgress, text().slice(0, 120).replace(/\s+/g, " "));
 
 const gotRows = await waitFor(() => dom.window.document.querySelectorAll(".tr.clickable").length > 0, 240_000, "table rows");
@@ -83,6 +86,17 @@ const firstRowText = dom.window.document.querySelector(".tr.clickable")?.textCon
 check("rows carry a name, symbol and numbers", /\S/.test(firstRowText) && /\d/.test(firstRowText), firstRowText.slice(0, 90));
 check("stats panel appeared", text().includes("launches found") && text().includes("raised (enriched)"));
 check("activity strip rendered", dom.window.document.querySelectorAll(".strip-bar").length > 0);
+
+// Motion layer: mounted, decorative, and cannot swallow clicks.
+const ring = dom.window.document.querySelector(".cursor-ring");
+const dot = dom.window.document.querySelector(".cursor-dot");
+check("cursor trail is mounted", Boolean(ring && dot));
+check(
+  "cursor trail rows carry a stagger index for the entrance animation",
+  Array.from(dom.window.document.querySelectorAll(".tr.clickable")).some((el) =>
+    (el.getAttribute("style") ?? "").includes("--i"),
+  ),
+);
 
 // ---- open the detail drawer ----
 const firstRow = dom.window.document.querySelector(".tr.clickable") as HTMLElement | null;
