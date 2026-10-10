@@ -9,6 +9,7 @@
  *   npx tsx scripts/ssr-check.tsx
  */
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import App from "../src/App";
 import { Simulator } from "../src/components/Simulator";
@@ -289,6 +290,21 @@ check(
   "the earliest factory deployment is the 'all' floor",
   EARLIEST_DEPLOYMENT_BLOCK === 95_916_239,
   String(EARLIEST_DEPLOYMENT_BLOCK),
+);
+
+// ---------- 6. the drawer must not let the page behind scroll ----------
+// These are CSS-only fixes, unreachable from jsdom's layout-less DOM, so assert the rules
+// exist in the source. Deleting them would silently bring the bug back.
+const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+check(
+  "the drawer contains overscroll (no scroll chaining to the feed)",
+  /\.detail\s*\{[^}]*overscroll-behavior:\s*contain/.test(css),
+);
+check("the page is locked while the drawer is open", /html\.drawer-open[^{]*\{[^}]*overflow:\s*hidden/.test(css));
+check("the drawer paints above the feed", /\.detail\s*\{[^}]*z-index:\s*\d+/.test(css));
+check(
+  "rows can still lift on hover (entrance animation must not own transform forever)",
+  /\.tr\.clickable\s*\{[^}]*animation:[^;]*backwards/.test(css),
 );
 
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);

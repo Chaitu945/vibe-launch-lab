@@ -594,6 +594,23 @@ button.ghost:hover {
   flex-direction: column;
   gap: 14px;
   box-shadow: -24px 0 60px rgba(0, 0, 0, 0.55);
+  /* above the feed, and independent of DOM order */
+  z-index: 60;
+  /*
+   * Without this, a wheel or trackpad gesture over the panel chains to the page behind
+   * once the panel's own content fits, so the feed scrolls by while the drawer is open.
+   */
+  overscroll-behavior: contain;
+}
+
+/*
+ * While a token is open the page behind must not move at all: the panel is taller than the
+ * viewport, and scroll chaining made it look like the sidebar was scrolling through the
+ * tokens behind it. TokenDetail adds and removes this class.
+ */
+html.drawer-open,
+html.drawer-open body {
+  overflow: hidden;
 }
 
 .detail-head {
@@ -846,8 +863,10 @@ code {
 }
 
 .tr.clickable {
-  /* staggered entrance, index supplied by the row */
-  animation: rowIn 0.32s ease both;
+  /* staggered entrance, index supplied by the row.
+     `backwards`, not `both`: with `both` the animation's final `transform: none` keeps
+     winning over :hover, so the row could never lift. */
+  animation: rowIn 0.32s ease backwards;
   animation-delay: calc(var(--i, 0) * 16ms);
   transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }

@@ -134,6 +134,13 @@ const drawer = await waitFor(() => dom.window.document.querySelector(".detail") 
 check("detail drawer opens on row click", drawer);
 check("drawer shows the model-vs-contract check", text().includes("Model vs contract") && text().includes("quoteBuy"));
 
+// ---- while the drawer is open the page behind must be locked ----
+// The complaint was the feed scrolling by underneath the open panel. Never let it.
+check(
+  "opening a token locks the page behind it",
+  dom.window.document.documentElement.classList.contains("drawer-open"),
+);
+
 // ---- run the live model verification from the drawer (classic rows) ----
 // V6 rows intentionally have no run-check button: their curve exposes no members
 // to check against. Either path is a pass; a contradiction is a failure.
@@ -159,6 +166,15 @@ if (checkBtn) {
 } else {
   check("V6 row explains the absent check and the quote-derived price", v6Explained);
 }
+
+// ---- Escape closes the panel and releases the page lock ----
+dom.window.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+const closed = await waitFor(() => dom.window.document.querySelector(".detail") === null, 5_000, "drawer close");
+check("Escape closes the drawer", closed);
+check(
+  "closing the drawer releases the page lock",
+  !dom.window.document.documentElement.classList.contains("drawer-open"),
+);
 
 // ---- simulator tab ----
 const simTab = Array.from(dom.window.document.querySelectorAll("button")).find((b) => b.textContent === "Launch simulator");

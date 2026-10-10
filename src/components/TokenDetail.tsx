@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CHAIN } from "../lib/chain";
 import { fmtEth, fmtPrice, fmtPriceFull, fmtTokens, pct, short, agoFromUnix } from "../lib/format";
 import { verifyCurve, rowLaunchTimestamp, rowProgressBps, rowRaised, rowTarget, rowTaxBps, rowTokensSold, type LaunchRow, type VerificationResult } from "../lib/scan";
@@ -12,6 +12,35 @@ interface Props {
 }
 
 export function TokenDetail({ row, metadata, onClose }: Props) {
+  const asideRef = useRef<HTMLElement | null>(null);
+  /**
+   * React reuses this <aside> when a different row is clicked (same element type, same
+   * position in the tree), so the previous token's scroll position carried over and the
+   * panel could open part-way down its own content, over blank space. Start every token
+   * at the top.
+   */
+  useEffect(() => {
+    if (asideRef.current) asideRef.current.scrollTop = 0;
+  }, [row.curve]);
+
+  /**
+   * Lock the page while the panel is open, and let Escape close it. Without the lock, a
+   * wheel over the fixed panel chains to the feed behind it, which looks like the sidebar
+   * scrolling through the tokens underneath.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("drawer-open");
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      root.classList.remove("drawer-open");
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
   const [check, setCheck] = useState<VerificationResult | null>(null);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
@@ -41,7 +70,7 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
    */
   const meta = useMemo(() => (metadata ? sanitizeMetadata((metadata as { raw?: unknown }).raw ?? metadata) : null), [metadata]);
   return (
-    <aside className="detail">
+    <aside className="detail" ref={asideRef} role="dialog" aria-label={`${row.name} details`}>
       <div className="detail-head">
         <TokenAvatar name={row.name} imageUri={meta?.image} size={44} />
         <div>
