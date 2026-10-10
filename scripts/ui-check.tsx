@@ -75,6 +75,19 @@ const sawProgress = await waitFor(
 );
 check("scan kicks off and reports progress", sawProgress, text().slice(0, 120).replace(/\s+/g, " "));
 
+// The complaint: block ranges and chunk arithmetic were printed into the reading line.
+const progressLabel = dom.window.document.querySelector(".progress-label")?.textContent ?? "";
+check(
+  "the progress line reads as English, not raw block ranges",
+  progressLabel !== "" && !/\d{3},\d{3},\d{3}/.test(progressLabel) && !progressLabel.includes("blocks"),
+  progressLabel.replace(/\s+/g, " ").slice(0, 70),
+);
+const detailSeen = await waitFor(() => dom.window.document.querySelector(".progress-detail") !== null, 10_000, "scan detail");
+check(
+  "the raw scan detail is kept behind a collapsed disclosure",
+  detailSeen && (dom.window.document.querySelector(".progress-detail") as HTMLDetailsElement).open === false,
+);
+
 const gotRows = await waitFor(() => dom.window.document.querySelectorAll(".tr.clickable").length > 0, 240_000, "table rows");
 if (dom.window.document.querySelectorAll(".tr.clickable").length === 0) {
   console.log(`      body text at timeout: ${text().replace(/\s+/g, " ").slice(0, 400)}`);
@@ -127,12 +140,29 @@ check(
   ),
 );
 
+// ---- quick chips and the standouts panel ----
+const chips = Array.from(dom.window.document.querySelectorAll(".chip")) as HTMLElement[];
+check("quick status chips are present", chips.length >= 4, `${chips.length} chips`);
+const nearlyChip = chips.find((c) => (c.textContent ?? "").includes("nearly"));
+nearlyChip?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+const chipActive = await waitFor(() => nearlyChip?.classList.contains("on") === true, 5_000, "chip filter");
+check("clicking a chip switches the filter", chipActive);
+// put it back, so the table is populated for the checks that follow
+chips.find((c) => (c.textContent ?? "").includes("everything"))?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+const restored = await waitFor(() => dom.window.document.querySelectorAll(".tr.clickable").length > 0, 5_000, "table restored");
+check("clearing the chip restores the full table", restored);
+
+const lbRows = dom.window.document.querySelectorAll(".lb-row");
+check("standouts panel ranks real rows", lbRows.length > 0, `${lbRows.length} ranked entries`);
+check("standouts says what it is ranking", text().includes("rows read so far"));
+
 // ---- open the detail drawer ----
 const firstRow = dom.window.document.querySelector(".tr.clickable") as HTMLElement | null;
 firstRow?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
 const drawer = await waitFor(() => dom.window.document.querySelector(".detail") !== null, 5_000, "detail drawer");
 check("detail drawer opens on row click", drawer);
 check("drawer shows the model-vs-contract check", text().includes("Model vs contract") && text().includes("quoteBuy"));
+check("drawer offers copy actions", text().includes("copy address") && text().includes("copy curve") && text().includes("explorer"));
 
 // ---- while the drawer is open the page behind must be locked ----
 // The complaint was the feed scrolling by underneath the open panel. Never let it.

@@ -1170,6 +1170,178 @@ ul.plain {
 }
 
 
+/* ---------- quick status chips ---------- */
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+
+.chip {
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease, transform 0.14s ease;
+}
+
+.chip:hover:not(:disabled) {
+  color: var(--text);
+  border-color: #3a4046;
+  transform: translateY(-1px);
+}
+
+.chip.on {
+  color: #0b0d0f;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* a launch minutes old is the thing to look at */
+.tag.new {
+  color: #0b0d0f;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+  animation: pulse 1.7s ease-in-out infinite;
+}
+
+/* ---------- scan diagnostics, collapsed ---------- */
+.progress-detail {
+  margin-top: 8px;
+}
+
+.progress-detail summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11.5px;
+  list-style: none;
+}
+
+.progress-detail summary::-webkit-details-marker {
+  display: none;
+}
+
+.progress-detail summary::before {
+  content: "+ ";
+  font-family: var(--mono);
+}
+
+.progress-detail[open] summary::before {
+  content: "- ";
+}
+
+.progress-detail p {
+  margin: 6px 0 0;
+}
+
+/* ---------- standouts ---------- */
+.lb-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.lb-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.lb-title {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+
+.lb-title.raise {
+  color: var(--accent);
+}
+
+.lb-row {
+  display: grid;
+  grid-template-columns: 18px 26px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.lb-row:hover {
+  background: #15181b;
+  border-color: var(--border);
+  transform: translateX(2px);
+}
+
+.lb-rank {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.lb-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lb-name b {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lb-name small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.lb-value {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* ---------- drawer actions ---------- */
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+button.ghost.small,
+a.ghost.small {
+  font-size: 11.5px;
+  padding: 5px 10px;
+}
+
+a.ghost.small {
+  display: inline-block;
+  text-decoration: none;
+}
+
 @media (max-width: 1080px) {
   .tr {
     grid-template-columns: 1.8fr 0.6fr 0.8fr 0.8fr 1fr 0.9fr;

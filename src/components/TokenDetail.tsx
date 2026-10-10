@@ -42,6 +42,20 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
   }, [onClose]);
 
   const [check, setCheck] = useState<VerificationResult | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  /** Clipboard is not always available (insecure context, headless DOM), so say so rather
+   *  than silently doing nothing. */
+  const copy = async (label: string, value: string) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("no clipboard");
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 1600);
+    } catch {
+      setCopied("copy blocked by the browser, select it manually");
+      setTimeout(() => setCopied(null), 2600);
+    }
+  };
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
 
@@ -93,6 +107,25 @@ export function TokenDetail({ row, metadata, onClose }: Props) {
         <button className="ghost" onClick={onClose} aria-label="Close">
           ✕
         </button>
+      </div>
+
+      {/* instant utility: the values people paste elsewhere */}
+      <div className="detail-actions">
+        <button className="ghost small" onClick={() => copy("token address copied", row.token)}>
+          copy address
+        </button>
+        <button className="ghost small" onClick={() => copy("curve address copied", row.curve)}>
+          copy curve
+        </button>
+        <a
+          className="ghost small"
+          href={`https://explorer.testnet.chain.robinhood.com/address/${row.token}`}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          explorer ↗
+        </a>
+        {copied && <span className="muted small">{copied}</span>}
       </div>
 
       {meta?.description && <p className="detail-desc">{meta.description}</p>}

@@ -5,6 +5,7 @@ import { activityBuckets, enrichLaunches, rowLaunchTimestamp, rowProgressBps, ro
 import { fetchMetadata, mapLimit, type ProjectMetadata } from "../lib/metadata";
 import { agoFromUnix, duration, fmtEth, fmtInt, fmtPrice, fmtPriceFull, pct, short } from "../lib/format";
 import { TokenAvatar } from "./TokenAvatar";
+import { Leaderboard } from "./Leaderboard";
 import { ActivityStrip } from "./ActivityStrip";
 import { TokenDetail } from "./TokenDetail";
 
@@ -33,6 +34,10 @@ type SortKey = "newest" | "progress" | "raised" | "fdv" | "initialBuy";
 
 /** Progress tags: decoration on top of a real number, never a substitute for it. */
 function rowTag(r: LaunchRow) {
+  const ts = rowLaunchTimestamp(r);
+  const ageSeconds = ts ? Math.floor(Date.now() / 1000) - ts : null;
+  // A launch minutes old is the interesting thing on screen, so it gets the loudest tag.
+  if (ageSeconds !== null && ageSeconds < 300) return <span className="tag new">new</span>;
   if (r.graduated) return <span className="tag done">graduated</span>;
   const p = rowProgressBps(r);
   if (p !== null && p >= 9000) return <span className="tag hot">🔥 nearly graduating</span>;
@@ -51,6 +56,7 @@ export function Feed() {
   const [decodeWarn, setDecodeWarn] = useState<string | null>(null);
   const [capWarn, setCapWarn] = useState<string | null>(null);
   const [ignored, setIgnored] = useState(0);
+  const [halvings, setHalvings] = useState(0);
   const [head, setHead] = useState<number | null>(null);
   const [raw, setRaw] = useState<RawLaunch[]>([]);
   const [rows, setRows] = useState<LaunchRow[]>([]);
@@ -58,7 +64,7 @@ export function Feed() {
   const [selected, setSelected] = useState<LaunchRow | null>(null);
   const [query, setQuery] = useState("");
   const [genFilter, setGenFilter] = useState<"all" | "retired" | "legacy" | "current">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "on-curve" | "graduated">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "on-curve" | "graduated" | "nearly">("all");
   const [sort, setSort] = useState<SortKey>("newest");
   const [scannedAt, setScannedAt] = useState<number | null>(null);
   const stopRef = useRef(false);
@@ -100,6 +106,7 @@ export function Feed() {
         res.decodeFailures > 0 ? `${res.decodeFailures} log(s) failed to decode: ${res.firstDecodeError ?? "unknown error"}` : null,
       );
       setIgnored(res.ignoredLogs);
+      setHalvings(res.halvings);
       setCapWarn(
         res.truncated
           ? `stopped after ${fmtInt(res.launches.length)} launches, keeping the newest. A window this wide has more history than the page should hold, so narrow it for full coverage.`
@@ -172,6 +179,8 @@ export function Feed() {
     if (genFilter !== "all") list = list.filter((r) => r.generation === genFilter);
     if (statusFilter === "on-curve") list = list.filter((r) => !r.graduated);
     if (statusFilter === "graduated") list = list.filter((r) => r.graduated);
+    if (statusFilter === "nearly")
+      list = list.filter((r) => !r.graduated && (rowProgressBps(r) ?? 0) >= 9000);
     const sorted = [...list];
     switch (sort) {
       case "progress":
@@ -238,14 +247,28 @@ export function Feed() {
         <div className="progress">
           <div className="progress-label">
             {stage}
-            {progress ? ` · ${progress.label}` : ""}
-            {progress ? ` · ${fmtInt(progress.doneBlocks)} of ${fmtInt(progress.totalBlocks)} blocks` : ""}
+            {progress ? ` · ${Math.min(100, Math.round((progress.doneBlocks / progress.totalBlocks) * 100))}%` : ""}
+            {progress ? ` · ${fmtInt(progress.launches)} found` : ""}
             {progress?.etaSeconds ? ` · about ${duration(progress.etaSeconds)} left` : ""}
           </div>
           {progress && (
             <div className="bar">
               <div className="bar-fill" style={{ width: `${Math.min(100, (progress.doneBlocks / progress.totalBlocks) * 100).toFixed(1)}%` }} />
             </div>
+          )}
+          {/*
+            Raw block ranges and chunk arithmetic are diagnostics, not interface. They live
+            behind a disclosure so the default view reads as English, and anyone debugging a
+            scan can still see exactly which slice is in flight.
+          */}
+          {progress && (
+            <details className="progress-detail">
+              <summary>scan detail</summary>
+              <p className="muted small mono">
+                {progress.label} · {fmtInt(progress.doneBlocks)} of {fmtInt(progress.totalBlocks)} blocks
+                {halvings > 0 ? ` · chunk halved ${halvings}x after an RPC limit` : ""}
+              </p>
+            </details>
           )}
         </div>
       )}
@@ -300,6 +323,28 @@ export function Feed() {
             </div>
           )}
 
+          {rows.length > 0 && <Leaderboard rows={rows} meta={meta} onSelect={setSelected} />}
+
+          <div className="chips">
+            {(
+              [
+                ["all", "everything"],
+                ["on-curve", "on curve"],
+                ["nearly", "🔥 nearly graduating"],
+                ["graduated", "graduated"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                className={"chip" + (statusFilter === value ? " on" : "")}
+                onClick={() => setStatusFilter(value)}
+                disabled={busy}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <div className="filters">
             <input placeholder="search name, symbol, creator, address" value={query} onChange={(e) => setQuery(e.target.value)} />
             <select value={genFilter} onChange={(e) => setGenFilter(e.target.value as typeof genFilter)}>
@@ -311,6 +356,7 @@ export function Feed() {
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
               <option value="all">any status</option>
               <option value="on-curve">on curve</option>
+              <option value="nearly">nearly graduating</option>
               <option value="graduated">graduated</option>
             </select>
             <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
